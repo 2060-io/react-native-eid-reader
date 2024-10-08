@@ -41,7 +41,7 @@ export type NfcResult = {
   originalFacePhoto?: string; // base64
 };
 
-export default class NfcPassportReader {
+export default class EidReader {
   static startReading(params: StartReadingParams): Promise<NfcResult> {
     return EidReaderNativeModule.startReading(params);
   }

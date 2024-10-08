@@ -32,10 +32,10 @@ import org.jmrtd.BACKeySpec
 import org.jmrtd.lds.icao.MRZInfo
 import org.json.JSONObject
 
-class NfcPassportReaderModule(reactContext: ReactApplicationContext) :
+class EidReaderModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
 
-  private val nfcPassportReader = NfcPassportReader(reactContext)
+  private val nfcPassportReader = EidReader(reactContext)
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
   private var mrzInfo: MRZInfo? = null
   private var includeImages = false
@@ -113,13 +113,13 @@ class NfcPassportReaderModule(reactContext: ReactApplicationContext) :
             filter
           )
         } ?: run {
-          Log.e("NfcPassportReader", "CurrentActivity is null")
+          Log.e("EidReader", "CurrentActivity is null")
         }
       } ?: run {
-        Log.e("NfcPassportReader", "NfcAdapter is null")
+        Log.e("EidReader", "NfcAdapter is null")
       }
     } catch (e: Exception) {
-      Log.e("NfcPassportReader", e.message ?: "Unknown Error")
+      Log.e("EidReader", e.message ?: "Unknown Error")
     }
   }
 
@@ -234,6 +234,6 @@ class NfcPassportReaderModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
-    const val NAME = "NfcPassportReader"
+    const val NAME = "EidReader"
   }
 }

@@ -7,30 +7,30 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import NfcPassportReader, { type NfcResult } from '@2060.io/react-native-eid-reader';
+import EidReader, { type NfcResult } from '@2060.io/react-native-eid-reader';
 
 export default function App() {
   const [result, setResult] = React.useState<NfcResult>();
   const [tagDiscovered, setTagDiscovered] = React.useState<boolean>(false);
 
   React.useEffect(() => {
-    NfcPassportReader.addOnTagDiscoveredListener(() => {
+    EidReader.addOnTagDiscoveredListener(() => {
       console.log('Tag Discovered');
       setTagDiscovered(true);
     });
 
-    NfcPassportReader.addOnNfcStateChangedListener((state) => {
+    EidReader.addOnNfcStateChangedListener((state) => {
       console.log('NFC State Changed:', state);
     });
 
     return () => {
-      NfcPassportReader.stopReading();
-      NfcPassportReader.removeListeners();
+      EidReader.stopReading();
+      EidReader.removeListeners();
     };
   }, []);
 
   const startReading = () => {
-    NfcPassportReader.startReading({
+    EidReader.startReading({
       mrz: 'I<TURA05C575327<46099847164<<<0004019M2709031TUR<<<<<<<<<<<4OEZTUERK<<BATUHAN<<<<<<<<<<<<<',
       includeImages: true,
     })
@@ -46,12 +46,12 @@ export default function App() {
   };
 
   const stopReading = () => {
-    NfcPassportReader.stopReading();
+    EidReader.stopReading();
   };
 
   const openNfcSettings = async () => {
     try {
-      const result = await NfcPassportReader.openNfcSettings();
+      const result = await EidReader.openNfcSettings();
       console.log(result);
     } catch (e) {
       console.log(e);
@@ -60,7 +60,7 @@ export default function App() {
 
   const isNfcSupported = async () => {
     try {
-      const result = await NfcPassportReader.isNfcSupported();
+      const result = await EidReader.isNfcSupported();
       console.log(result);
     } catch (e) {
       console.log(e);
@@ -69,7 +69,7 @@ export default function App() {
 
   const isNfcEnabled = async () => {
     try {
-      const result = await NfcPassportReader.isNfcEnabled();
+      const result = await EidReader.isNfcEnabled();
       console.log(result);
     } catch (e) {
       console.log(e);
