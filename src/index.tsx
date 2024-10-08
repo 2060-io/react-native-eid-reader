@@ -25,24 +25,31 @@ enum EIdReaderEvent {
 export type StartReadingParams = {
   mrz: string;
   includeImages?: boolean; // default: false
+  includeRawData?: boolean; // default: false
 };
 
-export type NfcResult = {
-  birthDate?: string;
-  placeOfBirth?: string;
-  documentNo?: string;
-  expiryDate?: string;
-  firstName?: string;
-  gender?: string;
-  identityNo?: string;
-  lastName?: string;
-  mrz?: string;
-  nationality?: string;
-  originalFacePhoto?: string; // base64
+export type EidReadStatus = 'OK' | 'Error' | 'Canceled'
+
+export type EIdReadResult = {
+  status: EidReadStatus
+  data: {
+    birthDate?: string;
+    placeOfBirth?: string;
+    documentNo?: string;
+    expiryDate?: string;
+    firstName?: string;
+    gender?: string;
+    identityNo?: string;
+    lastName?: string;
+    mrz?: string;
+    nationality?: string;
+    originalFacePhoto?: string; // base64
+  }
+  dataGroupsBase64: Record<string, string>
 };
 
 export default class EIdReader {
-  static startReading(params: StartReadingParams): Promise<NfcResult> {
+  static startReading(params: StartReadingParams): Promise<EIdReadResult> {
     return EIdReaderNativeModule.startReading(params);
   }
 

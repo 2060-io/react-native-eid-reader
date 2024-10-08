@@ -20,7 +20,7 @@ class EIdReader(context: Context) {
   private val bitmapUtil = BitmapUtil(context)
   private val dateUtil = DateUtil()
 
-  fun readPassport(isoDep: IsoDep, bacKey: BACKeySpec, includeImages: Boolean): NfcResult {
+  fun readPassport(isoDep: IsoDep, bacKey: BACKeySpec, includeImages: Boolean, includeRawData: Boolean): EIdReadResult {
     isoDep.timeout = 5000
 
     val cardService = CardService.getInstance(isoDep)
@@ -58,14 +58,12 @@ class EIdReader(context: Context) {
 
     service.sendSelectApplet(paceSucceeded)
 
-    val nfcResult = NfcResult()
+    val nfcResult = EIdData()
     val dataGroupData: MutableMap<String, String> = mutableMapOf()
 
     if (!paceSucceeded) {
       try {
-        val comIn = service.getInputStream(PassportService.EF_COM)
-        val comFile = comIn.readBytes()
-        dataGroupData["COM"] = Base64.encodeToString(comFile, Base64.NO_WRAP)
+        service.getInputStream(PassportService.EF_COM).read()
       } catch (e: Exception) {
         e.printStackTrace()
 
@@ -73,9 +71,17 @@ class EIdReader(context: Context) {
       }
     }
 
+    if (includeRawData) {
+      val comIn = service.getInputStream(PassportService.EF_COM)
+      val comFile = comIn.readBytes()
+      dataGroupData["COM"] = Base64.encodeToString(comFile, Base64.NO_WRAP)
+    }
+
     val dg1In = service.getInputStream(PassportService.EF_DG1)
     val dg1File = DG1File(dg1In)
-    dataGroupData["DG1"] = Base64.encodeToString(dg1File.encoded, Base64.NO_WRAP)
+    if (includeRawData) {
+      dataGroupData["DG1"] = Base64.encodeToString(dg1File.encoded, Base64.NO_WRAP)
+    }
 
     val mrzInfo = dg1File.mrzInfo
 
@@ -119,14 +125,16 @@ class EIdReader(context: Context) {
         val image = bitmapUtil.getImage(faceImageInfo)
         nfcResult.originalFacePhoto = image
       }
-      dataGroupData["DG2"] = Base64.encodeToString(dg2File.encoded, Base64.NO_WRAP)
+      if (includeRawData) {
+        dataGroupData["DG2"] = Base64.encodeToString(dg2File.encoded, Base64.NO_WRAP)
+      }
     }
 
-    val sodIn = service.getInputStream(PassportService.EF_SOD)
-    val sodFile = sodIn.readBytes()
-    dataGroupData["SOD"] = Base64.encodeToString(sodFile, Base64.NO_WRAP)
-
-    nfcResult.dataGroups = dataGroupData
-    return nfcResult
+    if (includeRawData) {
+      val sodIn = service.getInputStream(PassportService.EF_SOD)
+      val sodFile = sodIn.readBytes()
+      dataGroupData["SOD"] = Base64.encodeToString(sodFile, Base64.NO_WRAP)
+    }
+    return EIdReadResult("OK", nfcResult, dataGroupData)
   }
 }

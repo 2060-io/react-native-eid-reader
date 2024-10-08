@@ -40,6 +40,7 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
   private var mrzInfo: MRZInfo? = null
   private var includeImages = false
+  private var includeRawData = false
   private var isReading = false
   private val jsonToReactMap = JsonToReactMap()
   private var _promise: Promise? = null
@@ -161,7 +162,7 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
                 _dialog?.setMessage("Reading. Hold your document...")
               })
 
-              val result = nfcPassportReader.readPassport(IsoDep.get(tag), bacKey, includeImages)
+              val result = nfcPassportReader.readPassport(IsoDep.get(tag), bacKey, includeImages, includeRawData)
 
               val map = result.serializeToMap()
               val reactMap = jsonToReactMap.convertJsonToMap(JSONObject(map))
@@ -199,6 +200,9 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
         includeImages =
           readableMap.hasKey("includeImages") && readableMap.getBoolean("includeImages")
 
+        includeRawData =
+                readableMap.hasKey("includeRawData") && readableMap.getBoolean("includeRawData")
+
         if (mrzString.isNullOrEmpty()) {
           reject(Exception("MRZ string is null"))
           return
@@ -215,7 +219,9 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
                     .setCancelable(true)
                     .setNegativeButton("Cancel") { dialog, _ ->
                       stopReading()
-                      _promise?.resolve("Popup canceled")
+                      val reactMap = jsonToReactMap.convertJsonToMap(JSONObject("{status: 'Canceled' }"))
+
+                      _promise?.resolve(reactMap)
                     }
             _dialog = builder.create()
             _dialog?.show()

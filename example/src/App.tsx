@@ -7,10 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import EIdReader, { type NfcResult } from '@2060.io/react-native-eid-reader';
+import EIdReader, { type EIdReadResult } from '@2060.io/react-native-eid-reader';
 
 export default function App() {
-  const [result, setResult] = React.useState<NfcResult>();
+  const [result, setResult] = React.useState<EIdReadResult>();
 
   React.useEffect(() => {
     EIdReader.addOnTagDiscoveredListener(() => {
@@ -30,9 +30,11 @@ export default function App() {
   const startReading = () => {
     EIdReader.startReading({
       mrz: 'I<TURA05C575327<46099847164<<<0004019M2709031TUR<<<<<<<<<<<4OEZTUERK<<BATUHAN<<<<<<<<<<<<<',
+      includeRawData: true,
       includeImages: true,
     })
       .then((res) => {
+        console.log(`status: ${res.status}`);
         console.log(`result: ${JSON.stringify(res)}`);
         setResult(res);
       })
