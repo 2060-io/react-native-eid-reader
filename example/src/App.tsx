@@ -7,51 +7,47 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import EidReader, { type NfcResult } from '@2060.io/react-native-eid-reader';
+import EIdReader, { type NfcResult } from '@2060.io/react-native-eid-reader';
 
 export default function App() {
   const [result, setResult] = React.useState<NfcResult>();
-  const [tagDiscovered, setTagDiscovered] = React.useState<boolean>(false);
 
   React.useEffect(() => {
-    EidReader.addOnTagDiscoveredListener(() => {
+    EIdReader.addOnTagDiscoveredListener(() => {
       console.log('Tag Discovered');
-      setTagDiscovered(true);
     });
 
-    EidReader.addOnNfcStateChangedListener((state) => {
+    EIdReader.addOnNfcStateChangedListener((state) => {
       console.log('NFC State Changed:', state);
     });
 
     return () => {
-      EidReader.stopReading();
-      EidReader.removeListeners();
+      EIdReader.stopReading();
+      EIdReader.removeListeners();
     };
   }, []);
 
   const startReading = () => {
-    EidReader.startReading({
+    EIdReader.startReading({
       mrz: 'I<TURA05C575327<46099847164<<<0004019M2709031TUR<<<<<<<<<<<4OEZTUERK<<BATUHAN<<<<<<<<<<<<<',
       includeImages: true,
     })
       .then((res) => {
-        setTagDiscovered(false);
         console.log(`result: ${JSON.stringify(res)}`);
         setResult(res);
       })
       .catch((e) => {
-        setTagDiscovered(false);
         console.error(e.message);
       });
   };
 
   const stopReading = () => {
-    EidReader.stopReading();
+    EIdReader.stopReading();
   };
 
   const openNfcSettings = async () => {
     try {
-      const result = await EidReader.openNfcSettings();
+      const result = await EIdReader.openNfcSettings();
       console.log(result);
     } catch (e) {
       console.log(e);
@@ -60,7 +56,7 @@ export default function App() {
 
   const isNfcSupported = async () => {
     try {
-      const result = await EidReader.isNfcSupported();
+      const result = await EIdReader.isNfcSupported();
       console.log(result);
     } catch (e) {
       console.log(e);
@@ -69,7 +65,7 @@ export default function App() {
 
   const isNfcEnabled = async () => {
     try {
-      const result = await EidReader.isNfcEnabled();
+      const result = await EIdReader.isNfcEnabled();
       console.log(result);
     } catch (e) {
       console.log(e);
@@ -104,15 +100,6 @@ export default function App() {
           <Text style={styles.text}>{JSON.stringify(result, null, 2)}</Text>
         </View>
       </ScrollView>
-      {tagDiscovered && (
-        <View style={styles.overlayBox}>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              NFC reading. Please wait for a moment...
-            </Text>
-          </View>
-        </View>
-      )}
     </>
   );
 }

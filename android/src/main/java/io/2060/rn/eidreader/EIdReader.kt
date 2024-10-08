@@ -1,9 +1,10 @@
-package com.nfcpassportreader
+package io.twentysixty.rn.eidreader
 
 import android.content.Context
 import android.nfc.tech.IsoDep
-import com.nfcpassportreader.utils.*
-import com.nfcpassportreader.dto.*
+import android.util.Base64
+import io.twentysixty.rn.eidreader.utils.*
+import io.twentysixty.rn.eidreader.dto.*
 import net.sf.scuba.smartcards.CardService
 import org.jmrtd.BACKeySpec
 import org.jmrtd.PassportService
@@ -14,7 +15,8 @@ import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
 import org.jmrtd.lds.iso19794.FaceImageInfo
 
-class EidReader(context: Context) {
+
+class EIdReader(context: Context) {
   private val bitmapUtil = BitmapUtil(context)
   private val dateUtil = DateUtil()
 
@@ -56,9 +58,14 @@ class EidReader(context: Context) {
 
     service.sendSelectApplet(paceSucceeded)
 
+    val nfcResult = NfcResult()
+    val dataGroupData: MutableMap<String, String> = mutableMapOf()
+
     if (!paceSucceeded) {
       try {
-        service.getInputStream(PassportService.EF_COM).read()
+        val comIn = service.getInputStream(PassportService.EF_COM)
+        val comFile = comIn.readBytes()
+        dataGroupData["COM"] = Base64.encodeToString(comFile, Base64.NO_WRAP)
       } catch (e: Exception) {
         e.printStackTrace()
 
@@ -66,27 +73,32 @@ class EidReader(context: Context) {
       }
     }
 
-    val nfcResult = NfcResult()
-
     val dg1In = service.getInputStream(PassportService.EF_DG1)
     val dg1File = DG1File(dg1In)
+    dataGroupData["DG1"] = Base64.encodeToString(dg1File.encoded, Base64.NO_WRAP)
+
     val mrzInfo = dg1File.mrzInfo
 
-    val dg11In = service.getInputStream(PassportService.EF_DG11)
-    val dg11File = DG11File(dg11In)
+    try {
+      val dg11In = service.getInputStream(PassportService.EF_DG11)
+      val dg11File = DG11File(dg11In)
+      dataGroupData["DG11"] = Base64.encodeToString(dg11File.encoded, Base64.NO_WRAP)
 
-    val name = dg11File.nameOfHolder.substringAfterLast("<<").replace("<", " ")
-    val surname = dg11File.nameOfHolder.substringBeforeLast("<<")
+      nfcResult.firstName = dg11File.nameOfHolder.substringAfterLast("<<").replace("<", " ")
+      nfcResult.lastName = dg11File.nameOfHolder.substringBeforeLast("<<")
+  
+      nfcResult.placeOfBirth = dg11File.placeOfBirth.joinToString(separator = " ")
+      nfcResult.birthDate = dateUtil.convertFromNfcDate(dg11File.fullDateOfBirth)
 
-    nfcResult.firstName = name
-    nfcResult.lastName = surname
-
-    nfcResult.placeOfBirth = dg11File.placeOfBirth.joinToString(separator = " ")
+    } catch (e: Exception) {
+      nfcResult.firstName = mrzInfo.secondaryIdentifier.replace("<", " ").trim()
+      nfcResult.lastName = mrzInfo.primaryIdentifier.replace("<", " ").trim()
+      nfcResult.birthDate = dateUtil.convertFromMrzDate(mrzInfo.dateOfBirth)
+    }
 
     nfcResult.identityNo = mrzInfo.personalNumber
     nfcResult.gender = mrzInfo.gender.toString()
 
-    nfcResult.birthDate = dateUtil.convertFromNfcDate(dg11File.fullDateOfBirth)
     nfcResult.expiryDate = dateUtil.convertFromMrzDate(mrzInfo.dateOfExpiry)
 
     nfcResult.documentNo = mrzInfo.documentNumber
@@ -107,9 +119,14 @@ class EidReader(context: Context) {
         val image = bitmapUtil.getImage(faceImageInfo)
         nfcResult.originalFacePhoto = image
       }
+      dataGroupData["DG2"] = Base64.encodeToString(dg2File.encoded, Base64.NO_WRAP)
     }
 
-    if (dg11File.length > 0) return nfcResult
-    else throw Exception("DG11 file is empty")
+    val sodIn = service.getInputStream(PassportService.EF_SOD)
+    val sodFile = sodIn.readBytes()
+    dataGroupData["SOD"] = Base64.encodeToString(sodFile, Base64.NO_WRAP)
+
+    nfcResult.dataGroups = dataGroupData
+    return nfcResult
   }
 }

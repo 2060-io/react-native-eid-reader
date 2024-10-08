@@ -3,7 +3,7 @@
 #import "React/RCTBridgeModule.h"
 #import "React/RCTEventEmitter.h"
 
-@interface RCT_EXTERN_MODULE(EidReader, RCTEventEmitter)
+@interface RCT_EXTERN_MODULE(EIdReader, RCTEventEmitter)
 
 RCT_EXTERN_METHOD(isNfcSupported:(RCTPromiseResolveBlock)resolve
                  withRejecter:(RCTPromiseRejectBlock)reject)

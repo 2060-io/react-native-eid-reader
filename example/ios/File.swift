@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  NfcPassportReaderExample
+//  EIdReaderExample
 //
 
 import Foundation

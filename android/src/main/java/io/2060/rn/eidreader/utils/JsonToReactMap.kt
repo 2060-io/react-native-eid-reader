@@ -1,4 +1,4 @@
-package com.nfcpassportreader.utils
+package io.twentysixty.rn.eidreader.utils
 
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap

@@ -1,4 +1,4 @@
-package com.nfcpassportreader
+package io.twentysixty.rn.eidreader
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

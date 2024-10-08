@@ -6,8 +6,8 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo Go\n';
 
-const EidReaderNativeModule = NativeModules.EidReader
-  ? NativeModules.EidReader
+const EIdReaderNativeModule = NativeModules.EIdReader
+  ? NativeModules.EIdReader
   : new Proxy(
       {},
       {
@@ -17,7 +17,7 @@ const EidReaderNativeModule = NativeModules.EidReader
       }
     );
 
-enum NfcPassportReaderEvent {
+enum EIdReaderEvent {
   TAG_DISCOVERED = 'onTagDiscovered',
   NFC_STATE_CHANGED = 'onNfcStateChanged',
 }
@@ -41,37 +41,37 @@ export type NfcResult = {
   originalFacePhoto?: string; // base64
 };
 
-export default class EidReader {
+export default class EIdReader {
   static startReading(params: StartReadingParams): Promise<NfcResult> {
-    return EidReaderNativeModule.startReading(params);
+    return EIdReaderNativeModule.startReading(params);
   }
 
   static stopReading() {
-    EidReaderNativeModule.stopReading();
+    EIdReaderNativeModule.stopReading();
   }
 
   static addOnTagDiscoveredListener(callback: () => void) {
-    this.addListener(NfcPassportReaderEvent.TAG_DISCOVERED, callback);
+    this.addListener(EIdReaderEvent.TAG_DISCOVERED, callback);
   }
 
   static addOnNfcStateChangedListener(callback: (state: 'off' | 'on') => void) {
-    this.addListener(NfcPassportReaderEvent.NFC_STATE_CHANGED, callback);
+    this.addListener(EIdReaderEvent.NFC_STATE_CHANGED, callback);
   }
 
   static isNfcEnabled(): Promise<boolean> {
-    return EidReaderNativeModule.isNfcEnabled();
+    return EIdReaderNativeModule.isNfcEnabled();
   }
 
   static isNfcSupported(): Promise<boolean> {
-    return EidReaderNativeModule.isNfcSupported();
+    return EIdReaderNativeModule.isNfcSupported();
   }
 
   static openNfcSettings(): Promise<boolean> {
-    return EidReaderNativeModule.openNfcSettings();
+    return EIdReaderNativeModule.openNfcSettings();
   }
 
   private static addListener(
-    event: NfcPassportReaderEvent,
+    event: EIdReaderEvent,
     callback: (data: any) => void
   ) {
     DeviceEventEmitter.addListener(event, callback);
@@ -79,10 +79,10 @@ export default class EidReader {
 
   static removeListeners() {
     DeviceEventEmitter.removeAllListeners(
-      NfcPassportReaderEvent.TAG_DISCOVERED
+      EIdReaderEvent.TAG_DISCOVERED
     );
     DeviceEventEmitter.removeAllListeners(
-      NfcPassportReaderEvent.NFC_STATE_CHANGED
+      EIdReaderEvent.NFC_STATE_CHANGED
     );
   }
 }

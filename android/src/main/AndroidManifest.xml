@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.nfcpassportreader">
+  package="io.twentysixty.rn.eidreader">
 
   <uses-feature
     android:name="android.hardware.nfc"

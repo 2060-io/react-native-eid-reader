@@ -1,4 +1,4 @@
-package com.nfcpassportreader.dto
+package io.twentysixty.rn.eidreader.dto
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

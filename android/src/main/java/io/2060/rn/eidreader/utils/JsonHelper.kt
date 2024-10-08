@@ -1,4 +1,4 @@
-package com.nfcpassportreader.utils
+package io.twentysixty.rn.eidreader.utils
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -9,7 +9,7 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.JsonSerializationContext
 import com.google.gson.JsonSerializer
 import com.google.gson.reflect.TypeToken
-import com.nfcpassportreader.dto.NfcImage
+import io.twentysixty.rn.eidreader.dto.NfcImage
 import java.lang.reflect.Type
 import java.time.LocalDateTime
 

@@ -1,11 +1,11 @@
-package com.nfcpassportreader.utils
+package io.twentysixty.rn.eidreader.utils
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.util.Base64
-import com.nfcpassportreader.dto.NfcImage
+import io.twentysixty.rn.eidreader.dto.NfcImage
 import org.jmrtd.lds.AbstractImageInfo
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream

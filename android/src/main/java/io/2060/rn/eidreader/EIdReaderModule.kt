@@ -1,7 +1,8 @@
-package com.nfcpassportreader
+package io.twentysixty.rn.eidreader
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -22,8 +23,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.nfcpassportreader.utils.JsonToReactMap
-import com.nfcpassportreader.utils.serializeToMap
+import io.twentysixty.rn.eidreader.utils.JsonToReactMap
+import io.twentysixty.rn.eidreader.utils.serializeToMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,13 +36,14 @@ import org.json.JSONObject
 class EidReaderModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
 
-  private val nfcPassportReader = EidReader(reactContext)
+  private val nfcPassportReader = EIdReader(reactContext)
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
   private var mrzInfo: MRZInfo? = null
   private var includeImages = false
   private var isReading = false
   private val jsonToReactMap = JsonToReactMap()
   private var _promise: Promise? = null
+  private var _dialog: AlertDialog? = null
 
   init {
     reactApplicationContext.addLifecycleEventListener(this)
@@ -113,13 +115,13 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
             filter
           )
         } ?: run {
-          Log.e("EidReader", "CurrentActivity is null")
+          Log.e("EIdReader", "CurrentActivity is null")
         }
       } ?: run {
-        Log.e("EidReader", "NfcAdapter is null")
+        Log.e("EIdReader", "NfcAdapter is null")
       }
     } catch (e: Exception) {
-      Log.e("EidReader", e.message ?: "Unknown Error")
+      Log.e("EIdReader", e.message ?: "Unknown Error")
     }
   }
 
@@ -138,6 +140,10 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
       if (!isReading) return
 
       sendEvent("onTagDiscovered", null)
+      currentActivity?.runOnUiThread(Runnable {
+        _dialog?.setMessage("ID Document found.")
+      })
+
 
       if (NfcAdapter.ACTION_TECH_DISCOVERED == intent.action) {
         val tag = intent.extras!!.getParcelable<Tag>(NfcAdapter.EXTRA_TAG)
@@ -151,11 +157,16 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
                 mrzInfo!!.dateOfExpiry
               )
 
+              currentActivity?.runOnUiThread(Runnable {
+                _dialog?.setMessage("Reading. Hold your document...")
+              })
+
               val result = nfcPassportReader.readPassport(IsoDep.get(tag), bacKey, includeImages)
 
               val map = result.serializeToMap()
               val reactMap = jsonToReactMap.convertJsonToMap(JSONObject(map))
 
+              stopReading()
               _promise?.resolve(reactMap)
             } catch (e: Exception) {
               reject(e)
@@ -174,8 +185,7 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
   }
 
   private fun reject(e: Exception) {
-    isReading = false
-    mrzInfo = null
+    stopReading()
     _promise?.reject(e)
   }
 
@@ -195,6 +205,26 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
         }
 
         mrzInfo = MRZInfo(mrzString)
+
+        val currentActivity = currentActivity
+        if (currentActivity != null) {
+          currentActivity?.runOnUiThread(Runnable {
+            val builder = AlertDialog.Builder(currentActivity)
+            builder.setTitle("Ready to Scan")
+                    .setMessage("Hold your phone near an NFC enabled passport")
+                    .setCancelable(true)
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                      stopReading()
+                      _promise?.resolve("Popup canceled")
+                    }
+            _dialog = builder.create()
+            _dialog?.show()
+          })
+        } else {
+          promise.reject("ActivityNotFound", "Current activity is null")
+        }
+
+
         isReading = true
       } catch (e: Exception) {
         reject(Exception("MRZ string is not valid"))
@@ -208,6 +238,8 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
   fun stopReading() {
     isReading = false
     mrzInfo = null
+    if (_dialog != null) _dialog?.dismiss()
+    _dialog = null
   }
 
   @ReactMethod
@@ -234,6 +266,6 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
-    const val NAME = "EidReader"
+    const val NAME = "EIdReader"
   }
 }

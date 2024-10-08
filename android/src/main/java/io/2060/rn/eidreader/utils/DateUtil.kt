@@ -1,4 +1,4 @@
-package com.nfcpassportreader.utils
+package io.twentysixty.rn.eidreader.utils
 
 import android.annotation.SuppressLint
 import java.text.DateFormat

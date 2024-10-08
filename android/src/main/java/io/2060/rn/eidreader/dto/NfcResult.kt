@@ -1,4 +1,4 @@
-package com.nfcpassportreader.dto
+package io.twentysixty.rn.eidreader.dto
 
 data class NfcResult(
   var birthDate: String? = null,
@@ -12,4 +12,5 @@ data class NfcResult(
   var mrz: String? = null,
   var nationality: String? = null,
   var originalFacePhoto: NfcImage? = null,
+  var dataGroups: MutableMap<String, String>? = null,
 )
