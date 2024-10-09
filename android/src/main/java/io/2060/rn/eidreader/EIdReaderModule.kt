@@ -25,12 +25,12 @@ import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import io.twentysixty.rn.eidreader.utils.JsonToReactMap
 import io.twentysixty.rn.eidreader.utils.serializeToMap
+import io.twentysixty.rn.eidreader.dto.MrzInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jmrtd.BACKey
 import org.jmrtd.BACKeySpec
-import org.jmrtd.lds.icao.MRZInfo
 import org.json.JSONObject
 
 class EidReaderModule(reactContext: ReactApplicationContext) :
@@ -38,7 +38,7 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
 
   private val nfcPassportReader = EIdReader(reactContext)
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
-  private var mrzInfo: MRZInfo? = null
+  private var mrzInfo: MrzInfo? = null
   private var includeImages = false
   private var includeRawData = false
   private var isReading = false
@@ -153,9 +153,9 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
           CoroutineScope(Dispatchers.IO).launch {
             try {
               val bacKey: BACKeySpec = BACKey(
-                mrzInfo!!.documentNumber,
-                mrzInfo!!.dateOfBirth,
-                mrzInfo!!.dateOfExpiry
+                mrzInfo!!.documentNo,
+                mrzInfo!!.birthDate,
+                mrzInfo!!.expiryDate
               )
 
               currentActivity?.runOnUiThread(Runnable {
@@ -195,20 +195,22 @@ class EidReaderModule(reactContext: ReactApplicationContext) :
     readableMap?.let {
       try {
         _promise = promise
-        val mrzString = readableMap.getString("mrz")
+        val mrzMap = readableMap?.getMap("mrzInfo")
+        val mrzExpirationDate = mrzMap?.getString("expirationDate")
+        val mrzBirthDate = mrzMap?.getString("birthDate")
+        val mrzDocumentNumber = mrzMap?.getString("documentNumber")
+
+        if (mrzExpirationDate.isNullOrEmpty() || mrzDocumentNumber.isNullOrEmpty() || mrzBirthDate.isNullOrEmpty()) {
+          reject(Exception("MRZ info is invalid"))
+        }
+
+        mrzInfo = MrzInfo(mrzBirthDate!!, mrzDocumentNumber!!, mrzExpirationDate!!)
 
         includeImages =
-          readableMap.hasKey("includeImages") && readableMap.getBoolean("includeImages")
+                readableMap.hasKey("includeImages") && readableMap.getBoolean("includeImages")
 
         includeRawData =
                 readableMap.hasKey("includeRawData") && readableMap.getBoolean("includeRawData")
-
-        if (mrzString.isNullOrEmpty()) {
-          reject(Exception("MRZ string is null"))
-          return
-        }
-
-        mrzInfo = MRZInfo(mrzString)
 
         val currentActivity = currentActivity
         if (currentActivity != null) {
