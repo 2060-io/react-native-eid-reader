@@ -99,11 +99,16 @@
   },
   "release-it": {
     "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
+      "push": false,
+      "commit": false,
+      "requireCommits": true,
+      "tagAnnotation": "${version}",
+      "requireBranch": "main"
     },
     "npm": {
-      "publish": true
+      "skipChecks": true,
+      "ignoreVersion": true,
+      "tag": "latest"
     },
     "github": {
       "release": true
