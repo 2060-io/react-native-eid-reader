@@ -1,11 +1,11 @@
-name: CI
+name: CD
 on:
   push:
     branches:
       - main
 
 jobs:
-  build-library:
+  build-and-unstable-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,6 +13,11 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+
+      - name: git config
+        run: |
+          git config user.name "@github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set NPM config
         run: |
@@ -26,4 +31,4 @@ jobs:
       - name: Release unstable
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn release --preRelease alpha --ci
+        run: yarn release --preRelease alpha --ci --no-git.push --no-git.commit
