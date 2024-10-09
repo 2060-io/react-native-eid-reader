@@ -7,7 +7,9 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import EIdReader, { type EIdReadResult } from '@2060.io/react-native-eid-reader';
+import EIdReader, {
+  type EIdReadResult,
+} from '@2060.io/react-native-eid-reader';
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
@@ -29,7 +31,11 @@ export default function App() {
 
   const startReading = () => {
     EIdReader.startReading({
-      mrz: 'I<TURA05C575327<46099847164<<<0004019M2709031TUR<<<<<<<<<<<4OEZTUERK<<BATUHAN<<<<<<<<<<<<<',
+      mrzInfo: {
+        expirationDate: '311201',
+        birthDate: '991201',
+        documentNumber: '123456789',
+      },
       includeRawData: true,
       includeImages: true,
     })

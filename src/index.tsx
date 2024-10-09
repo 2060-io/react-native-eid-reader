@@ -23,15 +23,19 @@ enum EIdReaderEvent {
 }
 
 export type StartReadingParams = {
-  mrz: string;
+  mrzInfo: {
+    expirationDate: string;
+    birthDate: string;
+    documentNumber: string;
+  };
   includeImages?: boolean; // default: false
   includeRawData?: boolean; // default: false
 };
 
-export type EidReadStatus = 'OK' | 'Error' | 'Canceled'
+export type EidReadStatus = 'OK' | 'Error' | 'Canceled';
 
 export type EIdReadResult = {
-  status: EidReadStatus
+  status: EidReadStatus;
   data: {
     birthDate?: string;
     placeOfBirth?: string;
@@ -44,8 +48,8 @@ export type EIdReadResult = {
     mrz?: string;
     nationality?: string;
     originalFacePhoto?: string; // base64
-  }
-  dataGroupsBase64: Record<string, string>
+  };
+  dataGroupsBase64: Record<string, string>;
 };
 
 export default class EIdReader {
@@ -85,11 +89,7 @@ export default class EIdReader {
   }
 
   static removeListeners() {
-    DeviceEventEmitter.removeAllListeners(
-      EIdReaderEvent.TAG_DISCOVERED
-    );
-    DeviceEventEmitter.removeAllListeners(
-      EIdReaderEvent.NFC_STATE_CHANGED
-    );
+    DeviceEventEmitter.removeAllListeners(EIdReaderEvent.TAG_DISCOVERED);
+    DeviceEventEmitter.removeAllListeners(EIdReaderEvent.NFC_STATE_CHANGED);
   }
 }

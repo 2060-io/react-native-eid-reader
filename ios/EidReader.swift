@@ -31,9 +31,16 @@ class EIdReader: RCTEventEmitter {
     // TODO
     isReading = true
     
-    let mrzKey = params["mrz"] as! String
+    let mrzInfo = params["mrzInfo"] as! NSDictionary
+    let expirationDate = mrzInfo["expirationDate"] as! String
+    let birthDate = mrzInfo["birthDate"] as! String
+    let documentNumber = mrzInfo["documentNumber"] as! String
+      
+    let mrzKey = PassportUtils().getMRZKey(passportNumber: documentNumber, dateOfBirth: birthDate, dateOfExpiry: expirationDate)
+    
     let includeImages = params["includeImages"] as? Bool
- 
+    let includeRawData = params["includeRawData"] as? Bool
+
     Task {
       do {
         let customMessageHandler : (NFCViewDisplayMessage)->String? = { (displayMessage) in
@@ -47,27 +54,38 @@ class EIdReader: RCTEventEmitter {
         }
         let passport = try await passportReader.readPassport( mrzKey: mrzKey, useExtendedMode: false,  customDisplayMessage:customMessageHandler)
 
-        var nfcResult: [String: Any] = [:]
+        var data: [String: Any] = [:]
 
-        nfcResult["birthDate"] = passport.dateOfBirth
-        nfcResult["placeOfBirth"] = passport.placeOfBirth
-        nfcResult["documentNo"] = passport.documentNumber
-        nfcResult["firstName"] = passport.firstName
-        nfcResult["gender"] = passport.gender
-        nfcResult["identityNo"] = passport.personalNumber
-        nfcResult["lastName"] = passport.lastName
-        nfcResult["mrz"] = passport.passportMRZ
-        nfcResult["nationality"] = passport.nationality
+        data["birthDate"] = passport.dateOfBirth
+        data["placeOfBirth"] = passport.placeOfBirth
+        data["documentNo"] = passport.documentNumber
+        data["firstName"] = passport.firstName
+        data["gender"] = passport.gender
+        data["identityNo"] = passport.personalNumber
+        data["lastName"] = passport.lastName
+        data["mrz"] = passport.passportMRZ
+        data["nationality"] = passport.nationality
 
-        passport.dataGroupsRead.forEach { dataGroup in
-          print( "Got \(dataGroup) details")
-          nfcResult[dataGroup.key.getName()] = Data(dataGroup.value.data).base64EncodedString()
+        if (includeImages == true) {
+            if let _ = passport.faceImageInfo {
+              print( "Got face Image details")
+              data["originalFacePhoto"] = passport.passportImage!.jpegData(compressionQuality: 1)?.base64EncodedString() ?? ""
+           }
         }
-        if let _ = passport.faceImageInfo {
-          print( "Got face Image details")
-          nfcResult["originalFacePhoto"] = passport.passportImage!.jpegData(compressionQuality: 1)?.base64EncodedString() ?? ""
+          
+        var eidReadResult: [String: Any] = [:]
+        eidReadResult["data"] = data
+
+        if (includeRawData == true) {
+            var dataGroupsBase64: [String: Any] = [:]
+            passport.dataGroupsRead.forEach { dataGroup in
+                print( "Got \(dataGroup) details")
+                dataGroupsBase64[dataGroup.key.getName()] = Data(dataGroup.value.data).base64EncodedString()
+            }
+            eidReadResult["dataGroupsBase64"] = dataGroupsBase64
         }
-        resolve(nfcResult)
+        
+        resolve(eidReadResult)
 
       } catch {
         print("ERROR!")
