@@ -33,7 +33,7 @@ import org.jmrtd.BACKey
 import org.jmrtd.BACKeySpec
 import org.json.JSONObject
 
-class EidReaderModule(reactContext: ReactApplicationContext) :
+class EIdReaderModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
 
   private val nfcPassportReader = EIdReader(reactContext)

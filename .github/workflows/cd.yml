@@ -19,6 +19,9 @@ jobs:
           git config user.name "@github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Set Verbose Logging
+        run: npm config set loglevel verbose --global
+
       - name: Set NPM config
         run: |
           echo "//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}" >> .npmrc
@@ -31,4 +34,4 @@ jobs:
       - name: Release unstable
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn release --preRelease alpha --ci --no-git.push --no-git.commit
+        run: yarn release --preRelease alpha --dry-run --VV --release-version
