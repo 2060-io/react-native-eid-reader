@@ -42,6 +42,7 @@ class EIdReader: RCTEventEmitter {
     let includeRawData = params["includeRawData"] as? Bool
 
     Task {
+      var eidReadResult: [String: Any] = [:]
       do {
         let customMessageHandler : (NFCViewDisplayMessage)->String? = { (displayMessage) in
           switch displayMessage {
@@ -73,7 +74,6 @@ class EIdReader: RCTEventEmitter {
            }
         }
           
-        var eidReadResult: [String: Any] = [:]
         eidReadResult["data"] = data
 
         if (includeRawData == true) {
@@ -84,13 +84,11 @@ class EIdReader: RCTEventEmitter {
             }
             eidReadResult["dataGroupsBase64"] = dataGroupsBase64
         }
-        
-        resolve(eidReadResult)
-
+        eidReadResult["status"] = "OK" 
       } catch {
-        print("ERROR!")
-        
+        eidReadResult["status"] = "Error" 
       }
+        resolve(eidReadResult)
     }
     
   }
