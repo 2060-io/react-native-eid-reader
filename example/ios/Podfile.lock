@@ -15,7 +15,7 @@ PODS:
     - hermes-engine/Pre-built (= 0.73.6)
   - hermes-engine/Pre-built (0.73.6)
   - libevent (2.1.12)
-  - OpenSSL-Universal (1.1.1900)
+  - OpenSSL-Universal (1.1.2301)
   - RCT-Folly (2022.05.16.00):
     - boost
     - DoubleConversion
@@ -889,7 +889,7 @@ PODS:
     - React-debug
   - react-native-eid-reader (0.0.1):
     - glog
-    - OpenSSL-Universal (= 1.1.1900)
+    - OpenSSL-Universal (= 1.1.2301)
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
   - React-nativeconfig (0.73.6)
@@ -1233,7 +1233,7 @@ SPEC CHECKSUMS:
   glog: c5d68082e772fa1c511173d6b30a9de2c05a69a2
   hermes-engine: 9cecf9953a681df7556b8cc9c74905de8f3293c0
   libevent: 4049cae6c81cdb3654a443be001fb9bdceff7913
-  OpenSSL-Universal: 84efb8a29841f2764ac5403e0c4119a28b713346
+  OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
   RCT-Folly: 7169b2b1c44399c76a47b5deaaba715eeeb476c0
   RCTRequired: ca1d7414aba0b27efcfa2ccd37637edb1ab77d96
   RCTTypeSafety: 678e344fb976ff98343ca61dc62e151f3a042292
@@ -1255,7 +1255,7 @@ SPEC CHECKSUMS:
   React-jsinspector: 85583ef014ce53d731a98c66a0e24496f7a83066
   React-logger: 3eb80a977f0d9669468ef641a5e1fabbc50a09ec
   React-Mapbuffer: 84ea43c6c6232049135b1550b8c60b2faac19fab
-  react-native-eid-reader: a64e40393e5096681be4f192f5d7b7a0f1586f1c
+  react-native-eid-reader: cdcc4d49ed0d8a271dbdfac23b5f865b380d0b94
   React-nativeconfig: b4d4e9901d4cabb57be63053fd2aa6086eb3c85f
   React-NativeModulesApple: cd26e56d56350e123da0c1e3e4c76cb58a05e1ee
   React-perflogger: 5f49905de275bac07ac7ea7f575a70611fa988f2
