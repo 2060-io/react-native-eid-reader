@@ -9,11 +9,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Build
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.LifecycleEventListener
@@ -23,15 +26,23 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import io.twentysixty.rn.eidreader.dto.MrzInfo
+import io.twentysixty.rn.eidreader.utils.BitmapUtil
 import io.twentysixty.rn.eidreader.utils.JsonToReactMap
 import io.twentysixty.rn.eidreader.utils.serializeToMap
-import io.twentysixty.rn.eidreader.dto.MrzInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jmrtd.BACKey
 import org.jmrtd.BACKeySpec
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import jj2000.j2k.decoder.Decoder
+import jj2000.j2k.util.ParameterList
+import org.jmrtd.lds.AbstractImageInfo
+
 
 class EIdReaderModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
@@ -271,6 +282,20 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     } else {
       promise.reject(Exception("Activity not found"))
     }
+  }
+
+  @ReactMethod
+  fun convert(data:String, promise: Promise){
+    val bitmapUtil = BitmapUtil(reactApplicationContext)
+    val decoded = Base64.decode(data,Base64.DEFAULT)
+    val image = bitmapUtil.getImage(decoded.inputStream(), decoded.size,"image/jp2")
+    promise.resolve(image.base64)
+    /*
+    val imageBitMap = BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
+    val jpegStream = ByteArrayOutputStream()
+    imageBitMap.compress(Bitmap.CompressFormat.JPEG, 100, jpegStream)
+    promise.resolve(Base64.encodeToString(jpegStream.toByteArray(), Base64.DEFAULT))
+     */
   }
 
   companion object {

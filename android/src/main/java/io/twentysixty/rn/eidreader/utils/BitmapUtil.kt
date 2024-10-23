@@ -22,15 +22,14 @@ import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 
 class BitmapUtil(private val context: Context) {
-  fun getImage(imageInfo: AbstractImageInfo): NfcImage {
+  fun getImage(imageInputStream: InputStream, imageLength: Int, mimeType: String): NfcImage {
     val image = NfcImage()
-    val imageLength = imageInfo.imageLength
-    val dataInputStream = DataInputStream(imageInfo.imageInputStream)
+    val dataInputStream = DataInputStream(imageInputStream)
     val buffer = ByteArray(imageLength)
     try {
       dataInputStream.readFully(buffer, 0, imageLength)
       val inputStream: InputStream = ByteArrayInputStream(buffer, 0, imageLength)
-      val bitmapImage = decodeImage(imageInfo.mimeType, inputStream)
+      val bitmapImage = decodeImage(mimeType, inputStream)
       image.bitmap = bitmapImage
       val base64Image = Base64.encodeToString(buffer, Base64.DEFAULT)
       image.base64 = base64Image

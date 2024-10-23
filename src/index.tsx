@@ -81,6 +81,10 @@ export default class EIdReader {
     return EIdReaderNativeModule.openNfcSettings();
   }
 
+  static convert(data: string): Promise<string> {
+    return EIdReaderNativeModule.convert(data);
+  }
+
   private static addListener(
     event: EIdReaderEvent,
     callback: (data: any) => void
