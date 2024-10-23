@@ -6,13 +6,18 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import EIdReader, {
   type EIdReadResult,
 } from '@2060.io/react-native-eid-reader';
+import { sampleImageBase64 } from './data';
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
+  const [convertedImage, setConvertedImage] = React.useState<
+    string | undefined
+  >(undefined);
 
   React.useEffect(() => {
     EIdReader.addOnTagDiscoveredListener(() => {
@@ -47,6 +52,12 @@ export default function App() {
       .catch((e) => {
         console.error(e.message);
       });
+  };
+
+  const convert = () => {
+    EIdReader.convert(sampleImageBase64).then((data) => {
+      setConvertedImage(`${data}`);
+    });
   };
 
   const stopReading = () => {
@@ -85,6 +96,9 @@ export default function App() {
       <ScrollView style={styles.container}>
         <View style={styles.box}>
           <View style={styles.buttonContainer}>
+            <TouchableOpacity onPress={convert} style={styles.button}>
+              <Text style={styles.buttonText}>Convert</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={startReading} style={styles.button}>
               <Text style={styles.buttonText}>Start Reading</Text>
             </TouchableOpacity>
@@ -108,6 +122,9 @@ export default function App() {
           <Text style={styles.text}>{JSON.stringify(result, null, 2)}</Text>
         </View>
       </ScrollView>
+      {convertedImage && (
+        <Image source={{ uri: convertedImage }} width={200} height={200} />
+      )}
     </>
   );
 }

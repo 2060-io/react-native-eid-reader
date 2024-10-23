@@ -42,6 +42,7 @@ import java.io.InputStream
 import jj2000.j2k.decoder.Decoder
 import jj2000.j2k.util.ParameterList
 import org.jmrtd.lds.AbstractImageInfo
+import java.io.IOException
 
 
 class EIdReaderModule(reactContext: ReactApplicationContext) :
@@ -287,15 +288,23 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun convert(data:String, promise: Promise){
     val bitmapUtil = BitmapUtil(reactApplicationContext)
+    
     val decoded = Base64.decode(data,Base64.DEFAULT)
-    val image = bitmapUtil.getImage(decoded.inputStream(), decoded.size,"image/jp2")
-    promise.resolve(image.base64)
-    /*
-    val imageBitMap = BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
-    val jpegStream = ByteArrayOutputStream()
-    imageBitMap.compress(Bitmap.CompressFormat.JPEG, 100, jpegStream)
-    promise.resolve(Base64.encodeToString(jpegStream.toByteArray(), Base64.DEFAULT))
-     */
+    try {
+      val nfcImage = bitmapUtil.getImage(decoded.inputStream(), decoded.size,"image/jp2")
+      if (nfcImage.bitmap != null) {
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        nfcImage.bitmap!!.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+        val bytes = byteArrayOutputStream.toByteArray()
+        promise.resolve("data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF))
+        return 
+      } 
+      else promise.reject("Cannot convert image")
+  
+    } catch (e: IOException) {
+      promise.reject("Cannot convert image")
+      return
+    }
   }
 
   companion object {
