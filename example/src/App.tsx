@@ -11,7 +11,7 @@ import {
 import EIdReader, {
   type EIdReadResult,
 } from '@2060.io/react-native-eid-reader';
-import { sampleImageBase64 } from './data';
+import { lena } from './data';
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
@@ -55,7 +55,7 @@ export default function App() {
   };
 
   const convert = () => {
-    EIdReader.convert(sampleImageBase64).then((data) => {
+    EIdReader.convert(lena).then((data) => {
       setConvertedImage(`${data}`);
     });
   };
@@ -123,7 +123,7 @@ export default function App() {
         </View>
       </ScrollView>
       {convertedImage && (
-        <Image source={{ uri: convertedImage }} width={200} height={200} />
+        <Image source={{ uri: convertedImage }} width={100} height={100} />
       )}
     </>
   );

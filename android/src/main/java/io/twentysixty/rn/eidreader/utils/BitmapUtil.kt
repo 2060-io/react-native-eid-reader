@@ -70,7 +70,6 @@ class BitmapUtil(private val context: Context) {
         }
       }
       parameters = ParameterList(defaults)
-      parameters.setProperty("rate", "3")
       parameters.setProperty("o", context.cacheDir.toString() + "/temp.ppm")
       parameters.setProperty("debug", "on")
       parameters.setProperty("i", context.cacheDir.toString() + "/temp.jp2")
