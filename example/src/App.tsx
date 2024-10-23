@@ -55,9 +55,13 @@ export default function App() {
   };
 
   const convert = () => {
-    EIdReader.convert(lena).then((data) => {
-      setConvertedImage(`${data}`);
-    });
+    EIdReader.convert(lena)
+      .then((data) => {
+        setConvertedImage(`${data}`);
+      })
+      .catch((error) => {
+        console.error('error', error);
+      });
   };
 
   const stopReading = () => {

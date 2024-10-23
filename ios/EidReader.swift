@@ -100,9 +100,10 @@ class EIdReader: RCTEventEmitter {
     reject: @escaping RCTPromiseRejectBlock
   ) {
     if let newData = Data(base64Encoded: _data as String) {
-      let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString()
-      resolve(jpegData)
-      return
+        if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
+            resolve("data:image/jpeg;base64,\(jpegData)")
+            return
+        }
     }
     reject("@ConvertError", "Convert from JP2 to JPEG error", nil)
   }
