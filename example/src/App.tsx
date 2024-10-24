@@ -54,8 +54,8 @@ export default function App() {
       });
   };
 
-  const convertJp2000ToJpeg = () => {
-    EIdReader.convertJp2000ToJpeg(lena)
+  const imageDataUrlToJpegDataUrl = () => {
+    EIdReader.imageDataUrlToJpegDataUrl(lena)
       .then((data) => {
         setConvertedImage(`${data}`);
       })
@@ -101,7 +101,7 @@ export default function App() {
         <View style={styles.box}>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              onPress={convertJp2000ToJpeg}
+              onPress={imageDataUrlToJpegDataUrl}
               style={styles.button}
             >
               <Text style={styles.buttonText}>Convert</Text>

@@ -93,26 +93,35 @@ class EIdReader: RCTEventEmitter {
     
   }
 
- @objc(convertJp2000ToJpeg:withResolver:withRejecter:)
-  func convertJp2000ToJpeg(
-    _data: NSString,
+ @objc(imageDataUrlToJpegDataUrl:withResolver:withRejecter:)
+  func imageDataUrlToJpegDataUrl(
+    dataUrl: NSString,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
-    let dataSplit = (_data as String).components(separatedBy: ";base64,")
-    let mimeType = dataSplit.first?.replacingOccurrences(of: "data:", with: "")
-    if(mimeType != "image/jp2"){
-        resolve(_data)
+    let dataSplit = (dataUrl as String).components(separatedBy: ";base64,")
+    if(dataSplit.count != 2){
+        reject("@ConvertError", "Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl", nil)
         return
     }
-    let dataContent = dataSplit[1]
-    if let newData = Data(base64Encoded: dataContent) {
-        if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
-          resolve("data:image/jpeg;base64,\(jpegData)")
-          return
+    if let mimeType = dataSplit.first?.replacingOccurrences(of: "data:", with: ""){
+        if(!mimeType.hasPrefix("image/")){
+            reject("@ConvertError", "Couldn't convert \(mimeType) to JPEG", nil)
+            return
+        }
+        if(mimeType == "image/jpeg"){
+            resolve(dataUrl)
+            return
+        }
+        let dataContent = dataSplit[1]
+        if let newData = Data(base64Encoded: dataContent) {
+            if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
+                resolve("data:image/jpeg;base64,\(jpegData)")
+                return
+            }
         }
     }
-    reject("@ConvertError", "Convert from JP2 to JPEG error", nil)
+    reject("@ConvertError", "Convert image data URL to JPEG image data url error", nil)
   }
 
   @objc(stopReading)

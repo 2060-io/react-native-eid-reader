@@ -286,18 +286,26 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun convertJp2000ToJpeg(data:String, promise: Promise){
+  fun imageDataUrlToJpegDataUrl(dataUrl:String, promise: Promise){
     try {
-      val dataSplit = data.split(";base64,")
+      val dataSplit = dataUrl.split(";base64,")
+      if(dataSplit.size != 2){
+        promise.reject("Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl")
+        return
+      }
       val mimeType = dataSplit[0].split(":")[1]
-      if(mimeType != "image/jp2"){
-        promise.resolve(data)
+      if(!mimeType.startsWith("image/")){
+        promise.reject("Couldn't convert $mimeType to JPEG")
+        return
+      }
+      if(mimeType == "image/jpeg"){
+        promise.resolve(dataUrl)
         return
       }
       val dataContent = dataSplit[1]
       val bitmapUtil = BitmapUtil(reactApplicationContext)
       val decoded = Base64.decode(dataContent,Base64.DEFAULT)
-      val nfcImage = bitmapUtil.getImage(decoded.inputStream(), decoded.size,"image/jp2")
+      val nfcImage = bitmapUtil.getImage(decoded.inputStream(), decoded.size, mimeType)
       if (nfcImage.bitmap != null) {
         val byteArrayOutputStream = ByteArrayOutputStream()
         nfcImage.bitmap!!.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
@@ -305,10 +313,10 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
         promise.resolve("data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF))
         return 
       }
-      else promise.reject("Cannot convertJp2000ToJpeg image")
+      else promise.reject("Cannot imageDataUrlToJpegDataUrl image")
   
     } catch (e: IOException) {
-      promise.reject("Cannot convertJp2000ToJpeg image")
+      promise.reject("Cannot imageDataUrlToJpegDataUrl image")
       return
     }
   }

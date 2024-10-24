@@ -81,8 +81,8 @@ export default class EIdReader {
     return EIdReaderNativeModule.openNfcSettings();
   }
 
-  static convertJp2000ToJpeg(data: string): Promise<string> {
-    return EIdReaderNativeModule.convertJp2000ToJpeg(data);
+  static imageDataUrlToJpegDataUrl(dataUrl: string): Promise<string> {
+    return EIdReaderNativeModule.imageDataUrlToJpegDataUrl(dataUrl);
   }
 
   private static addListener(
