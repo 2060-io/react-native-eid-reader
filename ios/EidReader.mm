@@ -20,7 +20,7 @@ RCT_EXTERN_METHOD(startReading:(NSDictionary *)params
 
 RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(stopReading);
 
-RCT_EXTERN_METHOD(convert:(NSString)data
+RCT_EXTERN_METHOD(convertJp2000ToJpeg:(NSString)data
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject);
 

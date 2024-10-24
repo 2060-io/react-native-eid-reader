@@ -286,11 +286,17 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun convert(data:String, promise: Promise){
-    val bitmapUtil = BitmapUtil(reactApplicationContext)
-    
-    val decoded = Base64.decode(data,Base64.DEFAULT)
+  fun convertJp2000ToJpeg(data:String, promise: Promise){
     try {
+      val dataSplit = data.split(";base64,")
+      val mimeType = dataSplit[0].split(":")[1]
+      if(mimeType != "image/jp2"){
+        promise.resolve(data)
+        return
+      }
+      val dataContent = dataSplit[1]
+      val bitmapUtil = BitmapUtil(reactApplicationContext)
+      val decoded = Base64.decode(dataContent,Base64.DEFAULT)
       val nfcImage = bitmapUtil.getImage(decoded.inputStream(), decoded.size,"image/jp2")
       if (nfcImage.bitmap != null) {
         val byteArrayOutputStream = ByteArrayOutputStream()
@@ -298,11 +304,11 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
         val bytes = byteArrayOutputStream.toByteArray()
         promise.resolve("data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF))
         return 
-      } 
-      else promise.reject("Cannot convert image")
+      }
+      else promise.reject("Cannot convertJp2000ToJpeg image")
   
     } catch (e: IOException) {
-      promise.reject("Cannot convert image")
+      promise.reject("Cannot convertJp2000ToJpeg image")
       return
     }
   }

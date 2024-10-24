@@ -93,16 +93,23 @@ class EIdReader: RCTEventEmitter {
     
   }
 
- @objc(convert:withResolver:withRejecter:)
-  func convert(
+ @objc(convertJp2000ToJpeg:withResolver:withRejecter:)
+  func convertJp2000ToJpeg(
     _data: NSString,
     resolve: @escaping RCTPromiseResolveBlock,
     reject: @escaping RCTPromiseRejectBlock
   ) {
-    if let newData = Data(base64Encoded: _data as String) {
+    let dataSplit = (_data as String).components(separatedBy: ";base64,")
+    let mimeType = dataSplit.first?.replacingOccurrences(of: "data:", with: "")
+    if(mimeType != "image/jp2"){
+        resolve(_data)
+        return
+    }
+    let dataContent = dataSplit[1]
+    if let newData = Data(base64Encoded: dataContent) {
         if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
-            resolve("data:image/jpeg;base64,\(jpegData)")
-            return
+          resolve("data:image/jpeg;base64,\(jpegData)")
+          return
         }
     }
     reject("@ConvertError", "Convert from JP2 to JPEG error", nil)
