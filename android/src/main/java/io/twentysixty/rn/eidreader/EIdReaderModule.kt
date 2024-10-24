@@ -9,11 +9,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Build
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.LifecycleEventListener
@@ -23,15 +26,24 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import io.twentysixty.rn.eidreader.dto.MrzInfo
+import io.twentysixty.rn.eidreader.utils.BitmapUtil
 import io.twentysixty.rn.eidreader.utils.JsonToReactMap
 import io.twentysixty.rn.eidreader.utils.serializeToMap
-import io.twentysixty.rn.eidreader.dto.MrzInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jmrtd.BACKey
 import org.jmrtd.BACKeySpec
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import jj2000.j2k.decoder.Decoder
+import jj2000.j2k.util.ParameterList
+import org.jmrtd.lds.AbstractImageInfo
+import java.io.IOException
+
 
 class EIdReaderModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
@@ -270,6 +282,42 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
       promise.resolve(true)
     } else {
       promise.reject(Exception("Activity not found"))
+    }
+  }
+
+  @ReactMethod
+  fun imageDataUrlToJpegDataUrl(dataUrl:String, promise: Promise){
+    try {
+      val dataSplit = dataUrl.split(";base64,")
+      if(dataSplit.size != 2){
+        promise.reject("Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl")
+        return
+      }
+      val mimeType = dataSplit[0].split(":")[1]
+      if(!mimeType.startsWith("image/")){
+        promise.reject("Couldn't convert $mimeType to JPEG")
+        return
+      }
+      if(mimeType == "image/jpeg"){
+        promise.resolve(dataUrl)
+        return
+      }
+      val dataContent = dataSplit[1]
+      val bitmapUtil = BitmapUtil(reactApplicationContext)
+      val decoded = Base64.decode(dataContent,Base64.DEFAULT)
+      val nfcImage = bitmapUtil.getImage(decoded.inputStream(), decoded.size, mimeType)
+      if (nfcImage.bitmap != null) {
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        nfcImage.bitmap!!.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+        val bytes = byteArrayOutputStream.toByteArray()
+        promise.resolve("data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF))
+        return 
+      }
+      else promise.reject("Cannot imageDataUrlToJpegDataUrl image")
+  
+    } catch (e: IOException) {
+      promise.reject("Cannot imageDataUrlToJpegDataUrl image")
+      return
     }
   }
 

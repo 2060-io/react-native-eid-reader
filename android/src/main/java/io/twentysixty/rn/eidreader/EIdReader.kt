@@ -122,7 +122,7 @@ class EIdReader(context: Context) {
       }
       if (allFaceImageInfos.isNotEmpty()) {
         val faceImageInfo = allFaceImageInfos.iterator().next()
-        val image = bitmapUtil.getImage(faceImageInfo)
+        val image = bitmapUtil.getImage(faceImageInfo.imageInputStream, faceImageInfo.imageLength,faceImageInfo.mimeType)
         nfcResult.originalFacePhoto = image
       }
       if (includeRawData) {

@@ -22,21 +22,17 @@ import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 
 class BitmapUtil(private val context: Context) {
-  fun getImage(imageInfo: AbstractImageInfo): NfcImage {
+  fun getImage(imageInputStream: InputStream, imageLength: Int, mimeType: String): NfcImage {
     val image = NfcImage()
-    val imageLength = imageInfo.imageLength
-    val dataInputStream = DataInputStream(imageInfo.imageInputStream)
+    val dataInputStream = DataInputStream(imageInputStream)
     val buffer = ByteArray(imageLength)
-    try {
-      dataInputStream.readFully(buffer, 0, imageLength)
-      val inputStream: InputStream = ByteArrayInputStream(buffer, 0, imageLength)
-      val bitmapImage = decodeImage(imageInfo.mimeType, inputStream)
-      image.bitmap = bitmapImage
-      val base64Image = Base64.encodeToString(buffer, Base64.DEFAULT)
-      image.base64 = base64Image
-    } catch (e: IOException) {
-      e.printStackTrace()
-    }
+
+    dataInputStream.readFully(buffer, 0, imageLength)
+    val inputStream: InputStream = ByteArrayInputStream(buffer, 0, imageLength)
+    val bitmapImage = decodeImage(mimeType, inputStream)
+    image.bitmap = bitmapImage
+    val base64Image = Base64.encodeToString(buffer, Base64.DEFAULT)
+    image.base64 = base64Image
     return image
   }
 
@@ -48,6 +44,12 @@ class BitmapUtil(private val context: Context) {
         ignoreCase = true
       ) || mimeType.equals("image/jpeg2000", ignoreCase = true)
     ) {
+
+      // Delete any existing temporary file
+      val tempJp2 = File(context.cacheDir, "temp.jp2")
+      if (tempJp2.exists()) tempJp2.delete()
+      val tempPpm = File(context.cacheDir, "temp.ppm")
+      if (tempPpm.exists()) tempPpm.delete()
 
       // Save jp2 file
       val output: OutputStream = FileOutputStream(File(context.cacheDir, "temp.jp2"))
@@ -68,7 +70,6 @@ class BitmapUtil(private val context: Context) {
         }
       }
       parameters = ParameterList(defaults)
-      parameters.setProperty("rate", "3")
       parameters.setProperty("o", context.cacheDir.toString() + "/temp.ppm")
       parameters.setProperty("debug", "on")
       parameters.setProperty("i", context.cacheDir.toString() + "/temp.jp2")

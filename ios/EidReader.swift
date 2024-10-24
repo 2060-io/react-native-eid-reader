@@ -93,6 +93,37 @@ class EIdReader: RCTEventEmitter {
     
   }
 
+ @objc(imageDataUrlToJpegDataUrl:withResolver:withRejecter:)
+  func imageDataUrlToJpegDataUrl(
+    dataUrl: NSString,
+    resolve: @escaping RCTPromiseResolveBlock,
+    reject: @escaping RCTPromiseRejectBlock
+  ) {
+    let dataSplit = (dataUrl as String).components(separatedBy: ";base64,")
+    if(dataSplit.count != 2){
+        reject("@ConvertError", "Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl", nil)
+        return
+    }
+    if let mimeType = dataSplit.first?.replacingOccurrences(of: "data:", with: ""){
+        if(!mimeType.hasPrefix("image/")){
+            reject("@ConvertError", "Couldn't convert \(mimeType) to JPEG", nil)
+            return
+        }
+        if(mimeType == "image/jpeg"){
+            resolve(dataUrl)
+            return
+        }
+        let dataContent = dataSplit[1]
+        if let newData = Data(base64Encoded: dataContent) {
+            if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
+                resolve("data:image/jpeg;base64,\(jpegData)")
+                return
+            }
+        }
+    }
+    reject("@ConvertError", "Convert image data URL to JPEG image data url error", nil)
+  }
+
   @objc(stopReading)
   func stopReading() -> Void {
     // TODO
