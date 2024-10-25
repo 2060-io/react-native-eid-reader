@@ -285,22 +285,19 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  @ReactMethod
-  fun imageDataUrlToJpegDataUrl(dataUrl:String, promise: Promise){
+  @ReactMethod(isBlockingSynchronousMethod = true)
+  fun imageDataUrlToJpegDataUrl(dataUrl:String): String {
     try {
       val dataSplit = dataUrl.split(";base64,")
       if(dataSplit.size != 2){
-        promise.reject("Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl")
-        return
+        throw Error("Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl")
       }
       val mimeType = dataSplit[0].split(":")[1]
       if(!mimeType.startsWith("image/")){
-        promise.reject("Couldn't convert $mimeType to JPEG")
-        return
+        throw Error("Couldn't convert $mimeType to JPEG")
       }
       if(mimeType == "image/jpeg"){
-        promise.resolve(dataUrl)
-        return
+        return dataUrl
       }
       val dataContent = dataSplit[1]
       val bitmapUtil = BitmapUtil(reactApplicationContext)
@@ -310,14 +307,12 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
         val byteArrayOutputStream = ByteArrayOutputStream()
         nfcImage.bitmap!!.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
         val bytes = byteArrayOutputStream.toByteArray()
-        promise.resolve("data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF))
-        return 
+        return "data:image/jpeg;base64,"+ Base64.encodeToString(bytes, Base64.CRLF)
       }
-      else promise.reject("Cannot imageDataUrlToJpegDataUrl image")
+      else throw Error("Cannot imageDataUrlToJpegDataUrl image")
   
     } catch (e: IOException) {
-      promise.reject("Cannot imageDataUrlToJpegDataUrl image")
-      return
+      throw Error("Cannot imageDataUrlToJpegDataUrl image")
     }
   }
 

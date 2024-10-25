@@ -81,7 +81,7 @@ export default class EIdReader {
     return EIdReaderNativeModule.openNfcSettings();
   }
 
-  static imageDataUrlToJpegDataUrl(dataUrl: string): Promise<string> {
+  static imageDataUrlToJpegDataUrl(dataUrl: string): string {
     return EIdReaderNativeModule.imageDataUrlToJpegDataUrl(dataUrl);
   }
 
