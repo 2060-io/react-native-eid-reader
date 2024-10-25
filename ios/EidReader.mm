@@ -20,9 +20,7 @@ RCT_EXTERN_METHOD(startReading:(NSDictionary *)params
 
 RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(stopReading);
 
-RCT_EXTERN_METHOD(imageDataUrlToJpegDataUrl:(NSString)dataUrl
-                  withResolver:(RCTPromiseResolveBlock)resolve
-                  withRejecter:(RCTPromiseRejectBlock)reject);
+RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(imageDataUrlToJpegDataUrl:(NSString)dataUrl);
 
 + (BOOL)requiresMainQueueSetup
 {

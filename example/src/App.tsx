@@ -15,9 +15,13 @@ import { lena } from './data';
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
-  const [convertedImage, setConvertedImage] = React.useState<
-    string | undefined
-  >(undefined);
+
+  let convertedImage;
+  try {
+    convertedImage = EIdReader.imageDataUrlToJpegDataUrl(lena);
+  } catch (error) {
+    console.error(error);
+  }
 
   React.useEffect(() => {
     EIdReader.addOnTagDiscoveredListener(() => {
@@ -51,16 +55,6 @@ export default function App() {
       })
       .catch((e) => {
         console.error(e.message);
-      });
-  };
-
-  const imageDataUrlToJpegDataUrl = () => {
-    EIdReader.imageDataUrlToJpegDataUrl(lena)
-      .then((data) => {
-        setConvertedImage(`${data}`);
-      })
-      .catch((error) => {
-        console.error('error', error);
       });
   };
 
@@ -100,12 +94,6 @@ export default function App() {
       <ScrollView style={styles.container}>
         <View style={styles.box}>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={imageDataUrlToJpegDataUrl}
-              style={styles.button}
-            >
-              <Text style={styles.buttonText}>Convert</Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={startReading} style={styles.button}>
               <Text style={styles.buttonText}>Start Reading</Text>
             </TouchableOpacity>
