@@ -93,20 +93,15 @@ class EIdReader: RCTEventEmitter {
     
   }
     
-    enum EidReaderError: Error {
-      case invalidInput(String)
-      case processingError(String)
-    }
-
-    @objc(imageDataUrlToJpegDataUrl:withError:)
-    func imageDataUrlToJpegDataUrl(dataUrl: NSString) throws -> String {
+    @objc(imageDataUrlToJpegDataUrl:)
+    func imageDataUrlToJpegDataUrl(dataUrl: NSString) -> String? {
     let dataSplit = (dataUrl as String).components(separatedBy: ";base64,")
     if(dataSplit.count != 2){
-        throw EidReaderError.invalidInput("Cannot imageDataUrlToJpegDataUrl image because is not a valid dataurl")
+        return nil
     }
     if let mimeType = dataSplit.first?.replacingOccurrences(of: "data:", with: ""){
         if(!mimeType.hasPrefix("image/")){
-            throw EidReaderError.invalidInput("Couldn't convert \(mimeType) to JPEG")
+            return nil
         }
         if(mimeType == "image/jpeg"){
             return dataUrl as String
@@ -115,11 +110,10 @@ class EIdReader: RCTEventEmitter {
         if let newData = Data(base64Encoded: dataContent) {
             if let jpegData = UIImage(data: newData)?.jpegData(compressionQuality: 1.0)?.base64EncodedString(){
                 return "data:image/jpeg;base64,\(jpegData)"
-                
             }
         }
     }
-    throw EidReaderError.processingError("Convert image data URL to JPEG image data url error")
+    return nil
   }
 
   @objc(stopReading)
