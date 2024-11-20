@@ -15,6 +15,7 @@ import CoreNFC
 
 @available(iOS 15, *)
 public class PassportReader : NSObject {
+    private var pendingPassportModel: NFCPassportModel? = nil
     private typealias NFCCheckedContinuation = CheckedContinuation<NFCPassportModel, Error>
     private var nfcContinuation: NFCCheckedContinuation?
 
@@ -117,33 +118,51 @@ extension PassportReader : NFCTagReaderSessionDelegate {
     }
     
     public func tagReaderSession(_ session: NFCTagReaderSession, didInvalidateWithError error: Error) {
+        // TODO: This delay of 1 second was added to wait popup finish close process before send response to RN side. Be aware in a future API update could do it in a better way
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.handlePostFinishSesion(didInvalidateWithError: error)
+        }
+    }
+    
+    private func handlePostFinishSesion(didInvalidateWithError error: Error) {
         // If necessary, you may handle the error. Note session is no longer valid.
         // You must create a new session to restart RF polling.
         Logger.passportReader.debug( "tagReaderSession:didInvalidateWithError - \(error.localizedDescription)" )
         self.readerSession?.invalidate()
         self.readerSession = nil
-
-        if let readerError = error as? NFCReaderError, readerError.code == NFCReaderError.readerSessionInvalidationErrorUserCanceled
-            && self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled {
-            
-            self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled = false
+        // if pop up dismissed and could scan nfc
+        if pendingPassportModel != nil {
+                    self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled = false
+                    nfcContinuation?.resume(returning: pendingPassportModel!)
+                    nfcContinuation = nil
+                    pendingPassportModel = nil
         } else {
-            var userError = NFCPassportReaderError.UnexpectedError
-            if let readerError = error as? NFCReaderError {
-                Logger.passportReader.error( "tagReaderSession:didInvalidateWithError - Got NFCReaderError - \(readerError.localizedDescription)" )
-                switch (readerError.code) {
-                case NFCReaderError.readerSessionInvalidationErrorUserCanceled:
-                    Logger.passportReader.error( "     - User cancelled session" )
-                    userError = NFCPassportReaderError.UserCanceled
-                default:
-                    Logger.passportReader.error( "     - some other error - \(readerError.localizedDescription)" )
-                    userError = NFCPassportReaderError.UnexpectedError
-                }
+            // if user press cancel button while scanning nfc or ocurrs error while scanning
+            if let readerError = error as? NFCReaderError, readerError.code == NFCReaderError.readerSessionInvalidationErrorUserCanceled
+                && self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled {
+                self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled = false
+                let userError = NFCPassportReaderError.UnexpectedError
+                nfcContinuation?.resume(throwing: userError)
+                nfcContinuation = nil
+            // when user press cancel button before start scanning
             } else {
-                Logger.passportReader.error( "tagReaderSession:didInvalidateWithError - Received error - \(error.localizedDescription)" )
+                var userError = NFCPassportReaderError.UnexpectedError
+                if let readerError = error as? NFCReaderError {
+                    Logger.passportReader.error( "tagReaderSession:didInvalidateWithError - Got NFCReaderError - \(readerError.localizedDescription)" )
+                    switch (readerError.code) {
+                    case NFCReaderError.readerSessionInvalidationErrorUserCanceled:
+                        Logger.passportReader.error( "     - User cancelled session" )
+                        userError = NFCPassportReaderError.UserCanceled
+                    default:
+                        Logger.passportReader.error( "     - some other error - \(readerError.localizedDescription)" )
+                        userError = NFCPassportReaderError.UnexpectedError
+                    }
+                } else {
+                    Logger.passportReader.error( "tagReaderSession:didInvalidateWithError - Received error - \(error.localizedDescription)" )
+                }
+                nfcContinuation?.resume(throwing: userError)
+                nfcContinuation = nil
             }
-            nfcContinuation?.resume(throwing: userError)
-            nfcContinuation = nil
         }
     }
     
@@ -191,10 +210,7 @@ extension PassportReader : NFCTagReaderSessionDelegate {
                     }
                 }
                 
-                let passportModel = try await self.startReading( tagReader : tagReader)
-                nfcContinuation?.resume(returning: passportModel)
-                nfcContinuation = nil
-
+                try await self.startReading( tagReader : tagReader)
                 
             } catch let error as NFCPassportReaderError {
                 let errorMessage = NFCViewDisplayMessage.error(error)
@@ -215,7 +231,7 @@ extension PassportReader : NFCTagReaderSessionDelegate {
 @available(iOS 15, *)
 extension PassportReader {
     
-    func startReading(tagReader : TagReader) async throws -> NFCPassportModel {
+    func startReading(tagReader : TagReader) async throws -> Void {
 
         if !skipPACE {
             do {
@@ -255,7 +271,7 @@ extension PassportReader {
         // If we have a masterlist url set then use that and verify the passport now
         self.passport.verifyPassport(masterListURL: self.masterListURL, useCMSVerification: self.passiveAuthenticationUsesOpenSSL)
 
-        return self.passport
+        pendingPassportModel = self.passport
     }
     
     
@@ -408,8 +424,6 @@ extension PassportReader {
         // session). The real error is reported back with the call to the completed handler
         self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled = true
         self.readerSession?.invalidate(errorMessage: self.nfcViewDisplayMessageHandler?(errorMessage) ?? errorMessage.description)
-        nfcContinuation?.resume(throwing: error)
-        nfcContinuation = nil
     }
 }
 #endif
