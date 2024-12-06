@@ -41,8 +41,8 @@ export type StartReadingParams = {
     tagNotValid?: string;
     moreThanOneTagFound?: string;
     invalidMRZKey?: string;
-    error?: string
-  }
+    error?: string;
+  };
 };
 
 export type EidReadStatus = 'OK' | 'Error' | 'Canceled';
