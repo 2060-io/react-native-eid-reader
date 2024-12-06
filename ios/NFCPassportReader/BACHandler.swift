@@ -56,7 +56,7 @@ public class BACHandler {
         let maResponse = try await tagReader.doMutualAuthentication(cmdData: Data(cmd_data))
         Logger.bac.debug( "DATA - \(maResponse.data)" )
         guard maResponse.data.count > 0 else {
-            throw NFCPassportReaderError.InvalidMRZKey
+            throw NFCPassportReaderError.InvalidMRZKey()
         }
         
         let (KSenc, KSmac, ssc) = try self.sessionKeys(data: [UInt8](maResponse.data))

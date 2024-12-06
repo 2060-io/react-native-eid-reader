@@ -57,6 +57,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   private val jsonToReactMap = JsonToReactMap()
   private var _promise: Promise? = null
   private var _dialog: AlertDialog? = null
+  private var labels: ReadableMap? = null
 
   init {
     reactApplicationContext.addLifecycleEventListener(this)
@@ -171,7 +172,8 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
               )
 
               currentActivity?.runOnUiThread(Runnable {
-                _dialog?.setMessage("Reading. Hold your document...")
+                val message = labels?.getString("reading") ?: "Reading. Hold your document..."
+                _dialog?.setMessage(message)
               })
 
               val result = nfcPassportReader.readPassport(IsoDep.get(tag), bacKey, includeImages, includeRawData)
@@ -199,7 +201,8 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
 
   private fun reject(e: Exception) {
     currentActivity?.runOnUiThread(Runnable {
-      _dialog?.setMessage("Sorry, there was a problem reading the passport. Please try again")
+      val message = labels?.getString("error") ?: "Sorry, there was a problem reading the passport. Please try again"
+      _dialog?.setMessage(message)
     })
     stopReading(false)
     _promise?.reject(e)
@@ -210,6 +213,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     readableMap?.let {
       try {
         _promise = promise
+        labels = readableMap?.getMap("labels")
         val mrzMap = readableMap?.getMap("mrzInfo")
         val mrzExpirationDate = mrzMap?.getString("expirationDate")
         val mrzBirthDate = mrzMap?.getString("birthDate")
@@ -230,11 +234,14 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
         val currentActivity = currentActivity
         if (currentActivity != null) {
           currentActivity?.runOnUiThread(Runnable {
+            val title = labels?.getString("title") ?: "Ready to Scan"
+            val message = labels?.getString("requestPresentPassport") ?: "Hold your phone near an NFC enabled passport"
+            val cancelButton = labels?.getString("cancelButton") ?: "Cancel"
             val builder = AlertDialog.Builder(currentActivity)
-            builder.setTitle("Ready to Scan")
-                    .setMessage("Hold your phone near an NFC enabled passport")
+            builder.setTitle(title)
+                    .setMessage(message)
                     .setCancelable(true)
-                    .setNegativeButton("Cancel") { dialog, _ ->
+                    .setNegativeButton(cancelButton) { dialog, _ ->
                       stopReading()
                       val reactMap = jsonToReactMap.convertJsonToMap(JSONObject("{status: 'Canceled' }"))
 

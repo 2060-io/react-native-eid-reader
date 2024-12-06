@@ -31,6 +31,7 @@ class EIdReader: RCTEventEmitter {
     // TODO
     isReading = true
     
+    let labels = params["labels"] as? NSDictionary
     let mrzInfo = params["mrzInfo"] as! NSDictionary
     let expirationDate = mrzInfo["expirationDate"] as! String
     let birthDate = mrzInfo["birthDate"] as! String
@@ -44,16 +45,7 @@ class EIdReader: RCTEventEmitter {
     Task {
       var eidReadResult: [String: Any] = [:]
       do {
-        let customMessageHandler : (NFCViewDisplayMessage)->String? = { (displayMessage) in
-          switch displayMessage {
-          case .requestPresentPassport:
-            return "Hold your iPhone near an NFC enabled passport."
-          default:
-            // Return nil for all other messages so we use the provided default
-            return nil
-          }
-        }
-        let passport = try await passportReader.readPassport( mrzKey: mrzKey, useExtendedMode: false,  customDisplayMessage:customMessageHandler)
+        let passport = try await passportReader.readPassport( mrzKey: mrzKey, useExtendedMode: false, labels: labels)
 
         var data: [String: Any] = [:]
 

@@ -37,7 +37,7 @@ public class DataGroup {
         
         // Fix for some passports that may have invalid data - ensure that we do have data!
         guard data.count > pos else {
-            throw NFCPassportReaderError.TagNotValid
+            throw NFCPassportReaderError.TagNotValid()
         }
 
         if binToHex(data[pos]) & 0x0F == 0x0F {
