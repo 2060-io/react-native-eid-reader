@@ -198,7 +198,10 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   }
 
   private fun reject(e: Exception) {
-    stopReading()
+    currentActivity?.runOnUiThread(Runnable {
+      _dialog?.setMessage("Sorry, there was a problem reading the passport. Please try again")
+    })
+    stopReading(false)
     _promise?.reject(e)
   }
 
@@ -255,11 +258,13 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun stopReading() {
+  fun stopReading(removeDialog: Boolean = true) {
     isReading = false
     mrzInfo = null
-    if (_dialog != null) _dialog?.dismiss()
-    _dialog = null
+    if (_dialog != null && removeDialog) {
+      _dialog?.dismiss()
+      _dialog = null
+    }
   }
 
   @ReactMethod
