@@ -31,16 +31,16 @@ export type StartReadingParams = {
   includeImages?: boolean; // default: false
   includeRawData?: boolean; // default: false
   labels?: {
-    title?: string,
-    cancelButton?: string,
-    requestPresentPassport?: string,
-    authenticatingWithPassport?: string,
-    reading?: string,
-    activeAuthentication?: string,
-    successfulRead?: string,
-    tagNotValid?: string,
-    moreThanOneTagFound?: string,
-    invalidMRZKey?: string,
+    title?: string;
+    cancelButton?: string;
+    requestPresentPassport?: string;
+    authenticatingWithPassport?: string;
+    reading?: string;
+    activeAuthentication?: string;
+    successfulRead?: string;
+    tagNotValid?: string;
+    moreThanOneTagFound?: string;
+    invalidMRZKey?: string;
     error?: string
   }
 };
