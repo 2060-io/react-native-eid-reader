@@ -28,11 +28,11 @@ public enum NFCPassportReaderError: Error {
     case UnknownTag
     case UnknownImageFormat
     case NotImplemented
-    case TagNotValid
-    case ConnectionError
+    case TagNotValid(String? = nil)
+    case ConnectionError(String? = nil)
     case UserCanceled
-    case InvalidMRZKey
-    case MoreThanOneTagFound
+    case InvalidMRZKey(String? = nil)
+    case MoreThanOneTagFound(String? = nil)
     case InvalidHashAlgorithmSpecified
     case UnsupportedCipherAlgorithm
     case UnsupportedMappingType
