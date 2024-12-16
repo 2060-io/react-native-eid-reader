@@ -135,7 +135,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
         Log.e("EIdReader", "NfcAdapter is null")
       }
     } catch (e: Exception) {
-      Log.e("EIdReader", e.message ?: "Unknown Error")
+      Log.e("EIdReader", e.message ?: "onHostResume Unknown Error")
     }
   }
 
@@ -143,7 +143,12 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   }
 
   override fun onHostDestroy() {
-    adapter?.disableForegroundDispatch(currentActivity)
+    try {
+      adapter?.disableForegroundDispatch(currentActivity)
+    } catch (e: Exception) {
+      Log.w("EIdReader", e.message ?: "onHostDestroy Unknown Error")
+    }
+
   }
 
   override fun onActivityResult(p0: Activity?, p1: Int, p2: Int, p3: Intent?) {
