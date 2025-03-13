@@ -31,7 +31,7 @@ class BitmapUtil(private val context: Context) {
     val inputStream: InputStream = ByteArrayInputStream(buffer, 0, imageLength)
     val bitmapImage = decodeImage(mimeType, inputStream)
     image.bitmap = bitmapImage
-    val base64Image = Base64.encodeToString(buffer, Base64.DEFAULT)
+    val base64Image = Base64.encodeToString(buffer, Base64.NO_WRAP)
     image.base64 = base64Image
     return image
   }

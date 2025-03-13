@@ -27,6 +27,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import io.twentysixty.rn.eidreader.dto.MrzInfo
+import io.twentysixty.rn.eidreader.dto.EIdReadResult
 import io.twentysixty.rn.eidreader.utils.BitmapUtil
 import io.twentysixty.rn.eidreader.utils.JsonToReactMap
 import io.twentysixty.rn.eidreader.utils.serializeToMap
@@ -210,7 +211,14 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
       _dialog?.setMessage(message)
     })
     stopReading(false)
-    _promise?.reject(e)
+    stopReading()
+
+    val result = EIdReadResult("Error", null, null)
+    result.errorMsg = e.message
+
+    val map = result.serializeToMap()
+    val reactMap = jsonToReactMap.convertJsonToMap(JSONObject(map))
+    _promise?.resolve(reactMap)
   }
 
   @ReactMethod

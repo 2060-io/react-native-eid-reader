@@ -49,6 +49,7 @@ export type EidReadStatus = 'OK' | 'Error' | 'Canceled';
 
 export type EIdReadResult = {
   status: EidReadStatus;
+  errorMsg?: string;
   data: {
     birthDate?: string;
     placeOfBirth?: string;
