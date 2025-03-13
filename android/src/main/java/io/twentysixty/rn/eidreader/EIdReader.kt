@@ -123,7 +123,7 @@ class EIdReader(context: Context) {
       if (allFaceImageInfos.isNotEmpty()) {
         val faceImageInfo = allFaceImageInfos.iterator().next()
         val image = bitmapUtil.getImage(faceImageInfo.imageInputStream, faceImageInfo.imageLength,faceImageInfo.mimeType)
-        nfcResult.originalFacePhoto = image
+        nfcResult.originalFacePhoto = image.base64
       }
       if (includeRawData) {
         dataGroupData["DG2"] = Base64.encodeToString(dg2File.encoded, Base64.NO_WRAP)
@@ -135,6 +135,6 @@ class EIdReader(context: Context) {
       val sodFile = sodIn.readBytes()
       dataGroupData["SOD"] = Base64.encodeToString(sodFile, Base64.NO_WRAP)
     }
-    return EIdReadResult("OK", nfcResult, dataGroupData)
+    return EIdReadResult("OK", null, nfcResult, dataGroupData)
   }
 }
