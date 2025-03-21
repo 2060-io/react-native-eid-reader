@@ -7,21 +7,30 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Modal,
+  TextInput,
 } from 'react-native';
 import EIdReader, {
   type EIdReadResult,
 } from '@2060.io/react-native-eid-reader';
-import { lena } from './data';
+import { pngExample } from './data';
+
+enum InputStep {
+  DocumentNumber = 'DocumentNumber',
+  BirthDate = 'BirthDate',
+  ExpirationDate = 'ExpirationDate',
+}
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
-
-  let convertedImage;
-  try {
-    convertedImage = EIdReader.imageDataUrlToJpegDataUrl(lena);
-  } catch (error) {
-    console.error(error);
-  }
+  const [convertedImage, setConvertedImage] = React.useState(pngExample);
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [inputStep, setInputStep] = React.useState<InputStep>(
+    InputStep.DocumentNumber
+  );
+  const [documentNumber, setDocumentNumber] = React.useState('33016244');
+  const [birthDate, setBirthDate] = React.useState('870624');
+  const [expirationDate, setExpirationDate] = React.useState('330501');
 
   React.useEffect(() => {
     EIdReader.addOnTagDiscoveredListener(() => {
@@ -38,12 +47,28 @@ export default function App() {
     };
   }, []);
 
+  const handleOkPress = () => {
+    if (inputStep === InputStep.DocumentNumber) {
+      console.log('Entered documentNumber:', documentNumber);
+      setInputStep(InputStep.BirthDate);
+    } else if (inputStep === InputStep.BirthDate) {
+      console.log('Entered birthDate:', birthDate);
+      setInputStep(InputStep.ExpirationDate);
+    } else if (inputStep === InputStep.ExpirationDate) {
+      console.log('Entered expirationDate:', expirationDate);
+      setInputStep(InputStep.DocumentNumber);
+      // Perform action with inputText here
+      setModalVisible(false); // Close the modal
+      startReading();
+    }
+  };
+
   const startReading = () => {
     EIdReader.startReading({
       mrzInfo: {
-        expirationDate: '311201',
-        birthDate: '991201',
-        documentNumber: '123456789',
+        documentNumber,
+        expirationDate,
+        birthDate,
       },
       includeRawData: true,
       includeImages: true,
@@ -52,6 +77,16 @@ export default function App() {
         console.log(`status: ${res.status}`);
         console.log(`result: ${JSON.stringify(res)}`);
         setResult(res);
+        try {
+          if (res.data.originalFacePhoto) {
+            const img = EIdReader.imageDataUrlToJpegDataUrl(
+              `data:image/jp2;base64,${res.data.originalFacePhoto}`
+            );
+            setConvertedImage(img);
+          }
+        } catch (error) {
+          console.error(error);
+        }
       })
       .catch((e) => {
         console.error(e.message);
@@ -89,12 +124,66 @@ export default function App() {
     }
   };
 
+  const texts = {
+    [InputStep.DocumentNumber]: 'Document number',
+    [InputStep.BirthDate]: 'Birth date (YYMMDD)',
+    [InputStep.ExpirationDate]: 'Expiration date (YYMMDD)',
+  };
+
+  const callbacks = {
+    [InputStep.DocumentNumber]: setDocumentNumber,
+    [InputStep.BirthDate]: setBirthDate,
+    [InputStep.ExpirationDate]: setExpirationDate,
+  };
+
+  const defaultInput = {
+    [InputStep.DocumentNumber]: documentNumber,
+    [InputStep.BirthDate]: birthDate,
+    [InputStep.ExpirationDate]: expirationDate,
+  };
+
   return (
     <>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>{texts[inputStep]}</Text>
+            <TextInput
+              style={styles.input}
+              value={defaultInput[inputStep]}
+              onChangeText={callbacks[inputStep]}
+              placeholder="Type something"
+            />
+            <View style={styles.inputButtonContainer}>
+              <TouchableOpacity
+                style={styles.inputButton}
+                onPress={handleOkPress}
+              >
+                <Text style={styles.inputButtonText}>OK</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.inputButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.inputButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView style={styles.container}>
         <View style={styles.box}>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={startReading} style={styles.button}>
+            <TouchableOpacity
+              onPress={() => setModalVisible(true)}
+              style={styles.button}
+            >
               <Text style={styles.buttonText}>Start Reading</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={stopReading} style={styles.button}>
@@ -178,5 +267,54 @@ const styles = StyleSheet.create({
     color: '#252526',
     textAlign: 'center',
     fontSize: 22,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: 300,
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    color: 'black',
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  inputContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    color: 'black',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  input: {
+    width: '100%',
+    padding: 10,
+    color: 'black',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    marginBottom: 20,
+  },
+  inputButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  inputButton: {
+    backgroundColor: '#007bff',
+    padding: 10,
+    borderRadius: 5,
+  },
+  inputButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
