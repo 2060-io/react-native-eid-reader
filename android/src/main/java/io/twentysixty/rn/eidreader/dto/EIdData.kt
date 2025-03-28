@@ -11,5 +11,5 @@ data class EIdData(
   var lastName: String? = null,
   var mrz: String? = null,
   var nationality: String? = null,
-  var originalFacePhoto: NfcImage? = null,
+  var originalFacePhoto: String? = null,
 )
