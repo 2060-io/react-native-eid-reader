@@ -1,6 +1,6 @@
 {
   "name": "@2060.io/react-native-eid-reader",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Reads passports and ID cards using its the device NFC.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
