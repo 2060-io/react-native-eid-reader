@@ -3,7 +3,6 @@ package io.twentysixty.rn.eidreader
 import android.content.Context
 import android.nfc.tech.IsoDep
 import android.util.Base64
-import android.util.Log
 import io.twentysixty.rn.eidreader.utils.*
 import io.twentysixty.rn.eidreader.dto.*
 import java.io.ByteArrayInputStream
