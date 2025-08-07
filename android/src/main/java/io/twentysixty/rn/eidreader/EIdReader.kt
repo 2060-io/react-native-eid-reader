@@ -5,6 +5,7 @@ import android.nfc.tech.IsoDep
 import android.util.Base64
 import io.twentysixty.rn.eidreader.utils.*
 import io.twentysixty.rn.eidreader.dto.*
+import java.io.ByteArrayInputStream
 import net.sf.scuba.smartcards.CardService
 import org.jmrtd.BACKeySpec
 import org.jmrtd.PassportService
@@ -77,18 +78,24 @@ class EIdReader(context: Context) {
       dataGroupData["COM"] = Base64.encodeToString(comFile, Base64.NO_WRAP)
     }
 
-    val dg1In = service.getInputStream(PassportService.EF_DG1)
-    val dg1File = DG1File(dg1In)
+    val dg1RawBytes = service.getInputStream(PassportService.EF_DG1).use { it.readBytes() }
+    val dg1InputStream = ByteArrayInputStream(dg1RawBytes)
+    val dg1File = DG1File(dg1InputStream)
+
     if (includeRawData) {
-      dataGroupData["DG1"] = Base64.encodeToString(dg1File.encoded, Base64.NO_WRAP)
+      dataGroupData["DG1"] = Base64.encodeToString(dg1RawBytes, Base64.NO_WRAP)
     }
 
     val mrzInfo = dg1File.mrzInfo
 
     try {
-      val dg11In = service.getInputStream(PassportService.EF_DG11)
-      val dg11File = DG11File(dg11In)
-      dataGroupData["DG11"] = Base64.encodeToString(dg11File.encoded, Base64.NO_WRAP)
+      val dg11RawBytes = service.getInputStream(PassportService.EF_DG11).use { it.readBytes() }
+      val dg11InputStream = ByteArrayInputStream(dg11RawBytes)
+      val dg11File = DG11File(dg11InputStream)
+
+      if (includeRawData) {
+          dataGroupData["DG11"] = Base64.encodeToString(dg11File.encoded, Base64.NO_WRAP)
+      }
 
       nfcResult.firstName = dg11File.nameOfHolder.substringAfterLast("<<").replace("<", " ")
       nfcResult.lastName = dg11File.nameOfHolder.substringBeforeLast("<<")
@@ -113,8 +120,10 @@ class EIdReader(context: Context) {
       "${mrzInfo.documentNumber}${mrzInfo.dateOfExpiry}${mrzInfo.dateOfBirth}"
 
     if (includeImages) {
-      val dg2In = service.getInputStream(PassportService.EF_DG2)
-      val dg2File = DG2File(dg2In)
+      val dg2RawBytes = service.getInputStream(PassportService.EF_DG2).use { it.readBytes() }
+      val dg2InputStream = ByteArrayInputStream(dg2RawBytes)
+      val dg2File = DG2File(dg2InputStream)
+
       val faceInfos = dg2File.faceInfos
       val allFaceImageInfos: MutableList<FaceImageInfo> = ArrayList()
       for (faceInfo in faceInfos) {
@@ -126,7 +135,7 @@ class EIdReader(context: Context) {
         nfcResult.originalFacePhoto = image
       }
       if (includeRawData) {
-        dataGroupData["DG2"] = Base64.encodeToString(dg2File.encoded, Base64.NO_WRAP)
+        dataGroupData["DG2"] = Base64.encodeToString(dg2RawBytes, Base64.NO_WRAP)
       }
     }
 
