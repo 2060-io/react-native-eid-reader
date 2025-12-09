@@ -41,7 +41,7 @@ jobs:
         run: npm config set loglevel verbose --global
 
       - name: Install dependencies
-        run: yarn install --inmutable
+        run: yarn install --immutable
 
 
       - name: Build the library
