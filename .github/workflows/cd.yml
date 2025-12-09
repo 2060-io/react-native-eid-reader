@@ -1,37 +1,53 @@
-name: CD
+name: Continuous Deployment
 on:
+  workflow_dispatch:
+    inputs:
+      releaseType:
+        description: The type of release. Should be one of "major", "minor", "patch"
+        required: true
+        default: 'patch'
   push:
     branches:
       - main
 
+permissions:
+  id-token: write   # required for npm trusted publishing
+  issues: write
+  contents: write
+  pull-requests: write
+
 jobs:
-  build-and-unstable-release:
+  release:
     runs-on: ubuntu-latest
+   # Only run on workflow dispatch to main branch
+    if: github.ref == 'refs/heads/main' && github.repository == '2060-io/react-native-eid-reader' && github.event_name == 'workflow_dispatch'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout react-native-eid-reader
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup
-        uses: ./.github/actions/setup
+      - name: Setup node v22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
 
-      - name: git config
-        run: |
-          git config user.name "@github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      # anchor to the smallest npm version supporting trusted publishing
+      - name: Update npm
+        run: npm install -g npm@^11
 
       - name: Set Verbose Logging
         run: npm config set loglevel verbose --global
 
-      - name: Set NPM config
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}" >> .npmrc
-          echo "registry=https://registry.npmjs.org/" >> .npmrc
-          echo "always-auth=true" >> .npmrc
+      - name: Install dependencies
+        run: yarn install --inmutable
 
-      - name: Build package
-        run: yarn prepare
 
-      - name: Release unstable
+      - name: Build the library
+        run: yarn build
+
+      - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn release --preRelease alpha --dry-run --VV --release-version
+        run: yarn release ${{ github.event.inputs.releaseType }} --ci
