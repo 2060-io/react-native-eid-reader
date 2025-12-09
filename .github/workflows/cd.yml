@@ -45,7 +45,7 @@ jobs:
 
 
       - name: Build the library
-        run: yarn build
+        run: yarn prepare
 
       - name: Release
         env:
