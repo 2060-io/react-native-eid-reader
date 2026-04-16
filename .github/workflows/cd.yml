@@ -35,12 +35,12 @@ jobs:
       - name: Setup node v22
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.14.0'
           cache: yarn
 
       # anchor to the smallest npm version supporting trusted publishing
       - name: Update npm
-        run: npm install -g npm@^11
+        run: npm install -g npm@11.11.0
 
       - name: Set Verbose Logging
         run: npm config set loglevel verbose --global
