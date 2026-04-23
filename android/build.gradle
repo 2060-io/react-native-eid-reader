@@ -98,3 +98,17 @@ dependencies {
   implementation 'net.sf.scuba:scuba-sc-android:0.0.20'
 }
 
+// ---------------------------------------------------------------------------
+// React Native Codegen
+// ---------------------------------------------------------------------------
+// Mirrors the `codegenConfig` entry in the library's `package.json`. Only
+// applied under the New Architecture because the `com.facebook.react` plugin
+// is conditionally applied at the top of this file.
+if (isNewArchitectureEnabled()) {
+  react {
+    jsRootDir = file("../src/")
+    libraryName = "RNEIdReaderSpec"
+    codegenJavaPackageName = "io.twentysixty.rn.eidreader"
+  }
+}
+

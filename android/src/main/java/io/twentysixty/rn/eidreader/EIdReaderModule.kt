@@ -21,8 +21,6 @@ import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import io.twentysixty.rn.eidreader.dto.MrzInfo
@@ -40,7 +38,7 @@ import java.io.IOException
 
 
 class EIdReaderModule(reactContext: ReactApplicationContext) :
-  ReactContextBaseJavaModule(reactContext), LifecycleEventListener, ActivityEventListener {
+  NativeEIdReaderSpec(reactContext), LifecycleEventListener, ActivityEventListener {
 
   private val nfcPassportReader = EIdReader(reactContext)
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
@@ -209,8 +207,8 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     _promise?.reject(e)
   }
 
-  @ReactMethod
-  fun startReading(readableMap: ReadableMap?, promise: Promise) {
+  override fun startReading(params: ReadableMap, promise: Promise) {
+    val readableMap: ReadableMap? = params
     readableMap?.let {
       try {
         _promise = promise
@@ -267,8 +265,11 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  @ReactMethod
-  fun stopReading(removeDialog: Boolean = true) {
+  override fun stopReading() {
+    stopReading(true)
+  }
+
+  private fun stopReading(removeDialog: Boolean) {
     isReading = false
     mrzInfo = null
     if (_dialog != null && removeDialog) {
@@ -277,19 +278,16 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  @ReactMethod
-  fun isNfcEnabled(promise: Promise) {
+  override fun isNfcEnabled(promise: Promise) {
     promise.resolve(NfcAdapter.getDefaultAdapter(reactApplicationContext)?.isEnabled ?: false)
   }
 
-  @ReactMethod
-  fun isNfcSupported(promise: Promise) {
+  override fun isNfcSupported(promise: Promise) {
     promise.resolve(reactApplicationContext.packageManager.hasSystemFeature(PackageManager.FEATURE_NFC))
   }
 
   @SuppressLint("QueryPermissionsNeeded")
-  @ReactMethod
-  fun openNfcSettings(promise: Promise) {
+  override fun openNfcSettings(promise: Promise) {
     val intent = Intent(Settings.ACTION_NFC_SETTINGS)
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     if (intent.resolveActivity(reactApplicationContext.packageManager) != null) {
@@ -300,8 +298,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  @ReactMethod(isBlockingSynchronousMethod = true)
-  fun imageDataUrlToJpegDataUrl(dataUrl:String): String {
+  override fun imageDataUrlToJpegDataUrl(dataUrl: String): String {
     try {
       val dataSplit = dataUrl.split(";base64,")
       if(dataSplit.size != 2){
@@ -329,6 +326,16 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
     } catch (e: IOException) {
       throw Error("Cannot imageDataUrlToJpegDataUrl image")
     }
+  }
+
+  // NativeEventEmitter lifecycle hooks. The module emits events via
+  // `RCTDeviceEventEmitter` directly, so no per-event bookkeeping is needed.
+  override fun addListener(eventName: String) {
+    // no-op
+  }
+
+  override fun removeListeners(count: Double) {
+    // no-op
   }
 
   companion object {

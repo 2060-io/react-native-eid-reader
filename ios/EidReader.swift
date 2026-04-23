@@ -2,32 +2,36 @@ import Foundation
 import React
 import CoreNFC
 
-@objc(EIdReader)
-class EIdReader: RCTEventEmitter {
+@objc(EIdReaderImpl)
+public class EIdReaderImpl: NSObject {
   var isReading : Bool = false
   private let passportReader = PassportReader()
 
   private let _resolve: RCTPromiseResolveBlock? = nil
 
+  public override init() {
+    super.init()
+  }
+
   @objc(isNfcSupported:withRejecter:)
-  func isNfcSupported(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
+  public func isNfcSupported(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
     resolve(NFCNDEFReaderSession.readingAvailable)
   }
 
   @objc(isNfcEnabled:withRejecter:)
-  func isNfcEnabled(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
+  public func isNfcEnabled(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
     // TODO
     resolve(NFCNDEFReaderSession.readingAvailable)
   }
 
   @objc(openNfcSettings:withRejecter:)
-  func openNfcSettings(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
+  public func openNfcSettings(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
     // TODO
     resolve(isReading)
   }
 
   @objc(startReading:withResolver:withRejecter:)
-  func startReading(params: NSDictionary, resolve:@escaping RCTPromiseResolveBlock,reject:@escaping RCTPromiseRejectBlock) -> Void {
+  public func startReading(params: NSDictionary, resolve:@escaping RCTPromiseResolveBlock,reject:@escaping RCTPromiseRejectBlock) -> Void {
     // TODO
     isReading = true
     
@@ -86,7 +90,7 @@ class EIdReader: RCTEventEmitter {
   }
     
     @objc(imageDataUrlToJpegDataUrl:)
-    func imageDataUrlToJpegDataUrl(dataUrl: NSString) -> String? {
+    public func imageDataUrlToJpegDataUrl(dataUrl: NSString) -> String? {
     let dataSplit = (dataUrl as String).components(separatedBy: ";base64,")
     if(dataSplit.count != 2){
         return nil
@@ -109,7 +113,7 @@ class EIdReader: RCTEventEmitter {
   }
 
   @objc(stopReading)
-  func stopReading() -> Void {
+  public func stopReading() -> Void {
     // TODO
     isReading = false
   }
