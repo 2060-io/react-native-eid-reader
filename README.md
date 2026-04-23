@@ -93,10 +93,10 @@ async function scan() {
     // Option A — MRZ-based authentication (BAC / PACE-MRZ)
     const result: EIdReadResult = await EIdReader.startReading({
       mrzInfo: {
-        documentNumber: 'L726DHAM0',  // 9-char alphanumeric, or the full extended
+        documentNumber: 'ABC123456',  // 9-char alphanumeric, or the full extended
                                       // document number for TD1 cards that have one
-        birthDate: '751213',          // YYMMDD
-        expirationDate: '341112',     // YYMMDD
+        birthDate: '990101',          // YYMMDD
+        expirationDate: '341231',     // YYMMDD
       },
       includeImages: true,
       includeRawData: false,
@@ -143,7 +143,7 @@ Exactly one of `mrzInfo` or `can` must be supplied.
 | Param            | Type                                            | Default | Description                                                                                                  |
 | ---------------- | ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
 | `mrzInfo`        | `{ documentNumber, birthDate, expirationDate }` | —       | MRZ-derived key for BAC / PACE-MRZ. Dates in `YYMMDD` format. `documentNumber` may be longer than 9 chars for TD1 cards with an extended document number. |
-| `can`            | `string` (6 digits)                             | —       | Card Access Number for PACE-CAN. iOS only for now.                                                           |
+| `can`            | `string` (6 digits)                             | —       | Card Access Number for PACE-CAN. Supported on both iOS and Android, though **Android support is untested in-house** — we have no CAN-only eID to exercise it against. Reports welcome. |
 | `includeImages`  | `boolean`                                       | `false` | Include the portrait photo from DG2                                                                          |
 | `includeRawData` | `boolean`                                       | `false` | Include raw data groups as base64                                                                            |
 | `labels`         | `object`                                        | —       | Strings shown in the iOS NFC sheet & errors                                                                  |
@@ -156,7 +156,7 @@ The library picks the strongest access protocol the card advertises:
 
 1. **PACE** (preferred) — negotiated automatically when the card publishes `PACEInfo` in `EF.CardAccess`.
    - `PACE-MRZ` when `mrzInfo` is supplied.
-   - `PACE-CAN` when `can` is supplied (iOS only for now).
+   - `PACE-CAN` when `can` is supplied. Android path is untested in-house (see the `can` row above).
 2. **BAC** — automatic fallback when PACE is not supported or fails, using the MRZ key. Only meaningful with `mrzInfo`; eIDs that refuse BAC (e.g. French CNIe) will simply report the PACE failure.
 
 ### `stopReading(): void`
