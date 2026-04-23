@@ -74,12 +74,18 @@ RCT_EXPORT_MODULE()
   // implementation already expects, so the Swift code stays unchanged.
   NSMutableDictionary *dict = [NSMutableDictionary new];
 
-  auto mrz = params.mrzInfo();
-  dict[@"mrzInfo"] = @{
-    @"expirationDate": @(mrz.expirationDate().UTF8String ?: ""),
-    @"birthDate":      @(mrz.birthDate().UTF8String ?: ""),
-    @"documentNumber": @(mrz.documentNumber().UTF8String ?: ""),
-  };
+  // `mrzInfo` and `can` are both optional in the JS spec; the caller must
+  // supply exactly one of them. The Swift side validates this.
+  if (auto mrz = params.mrzInfo()) {
+    dict[@"mrzInfo"] = @{
+      @"expirationDate": @(mrz->expirationDate().UTF8String ?: ""),
+      @"birthDate":      @(mrz->birthDate().UTF8String ?: ""),
+      @"documentNumber": @(mrz->documentNumber().UTF8String ?: ""),
+    };
+  }
+  if (NSString *can = params.can()) {
+    dict[@"can"] = can;
+  }
 
   if (auto includeImages = params.includeImages()) {
     dict[@"includeImages"] = @(*includeImages);

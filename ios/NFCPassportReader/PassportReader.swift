@@ -36,6 +36,7 @@ public class PassportReader : NSObject {
     private var caHandler : ChipAuthenticationHandler?
     private var paceHandler : PACEHandler?
     private var mrzKey : String = ""
+    private var passwordType: PACEPasswordType = .mrz
     private var dataAmountToReadOverride : Int? = nil
     
     private var scanCompletedHandler: ((NFCPassportModel?, NFCPassportReaderError?)->())!
@@ -65,10 +66,39 @@ public class PassportReader : NSObject {
         dataAmountToReadOverride = amount
     }
     
-    public func readPassport( mrzKey : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, skipCA : Bool = false, skipPACE : Bool = false, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil, labels: NSDictionary?) async throws -> NFCPassportModel {
+    public func readPassport(
+        mrzKey: String? = nil,
+        can: String? = nil,
+        tags: [DataGroupId] = [],
+        skipSecureElements: Bool = true,
+        skipCA: Bool = false,
+        skipPACE: Bool = false,
+        useExtendedMode: Bool = false,
+        customDisplayMessage: ((NFCViewDisplayMessage) -> String?)? = nil,
+        labels: NSDictionary?
+    ) async throws -> NFCPassportModel {
+
+        // Determine password and type
+        let password: String
+        let passwordType: PACEPasswordType
+
+        if let can = can {
+            password = can
+            passwordType = .can
+        } else if let mrz = mrzKey {
+            password = mrz
+            passwordType = .mrz
+        } else {
+            throw NFCPassportReaderError.InvalidDataPassed("Either `mrzKey` or `can` must be provided.")
+        }
+
+        // Validate the password for the selected type
+        try PACEPasswordValidator.validate(password: password, type: passwordType)
+
         self.labels = labels
         self.passport = NFCPassportModel()
-        self.mrzKey = mrzKey
+        self.mrzKey = password
+        self.passwordType = passwordType
         self.skipCA = skipCA
         self.skipPACE = skipPACE
         self.useExtendedMode = useExtendedMode
@@ -97,7 +127,12 @@ public class PassportReader : NSObject {
         }
         
         if NFCTagReaderSession.readingAvailable {
-            readerSession = NFCTagReaderSession(pollingOption: [.iso14443], delegate: self, queue: nil)
+            // Poll for ISO 14443 Type A/B (all eMRTDs / eIDs) and additionally
+            // hint the stack to use PACE-aware polling. `.pace` alone would
+            // miss BAC-only passports; `.iso14443` alone would miss the
+            // tolerance tweaks Apple added in iOS 16 to reliably detect some
+            // post-2021 eIDs (e.g. the French CNIe).
+            readerSession = NFCTagReaderSession(pollingOption: [.iso14443, .pace], delegate: self, queue: nil)
             
             self.updateReaderSessionMessage( alertMessage: NFCViewDisplayMessage.requestPresentPassport(labels?["requestPresentPassport"] as? String))
             readerSession?.begin()
@@ -243,11 +278,30 @@ extension PassportReader {
                 Logger.passportReader.info( "Starting Password Authenticated Connection Establishment (PACE)" )
                  
                 let paceHandler = try PACEHandler( cardAccess: cardAccess, tagReader: tagReader )
-                try await paceHandler.doPACE(mrzKey: mrzKey )
+                try await paceHandler.doPACE(password: mrzKey, passwordType: passwordType)
                 passport.PACEStatus = .success
                 Logger.passportReader.debug( "PACE Succeeded" )
             } catch {
                 passport.PACEStatus = .failed
+                Logger.passportReader.error( "PACE Failed - determining next steps" )
+
+                // Check if this is a CAN-specific error
+                if let passportError = error as? NFCPassportReaderError {
+                    if case .InvalidCAN = passportError {
+                        throw passportError  // Propagate InvalidCAN directly
+                    } else if case .InvalidDataPassed(let reason) = passportError, reason.contains("CAN") {
+                        throw NFCPassportReaderError.InvalidCAN
+                    }
+                }
+
+                // BAC is only defined for MRZ-derived keys; when the caller
+                // supplied a CAN, bail out with InvalidCAN rather than falling
+                // back (which would fail anyway on CNIe-style cards).
+                if passwordType == .can {
+                    Logger.passportReader.error( "CAN authentication failed and BAC fallback not supported for CAN" )
+                    throw NFCPassportReaderError.InvalidCAN
+                }
+
                 Logger.passportReader.error( "PACE Failed - falling back to BAC" )
             }
             
@@ -256,7 +310,12 @@ extension PassportReader {
         
         // If either PACE isn't supported, we failed whilst doing PACE or we didn't even attempt it, then fall back to BAC
         if passport.PACEStatus != .success {
-            try await doBACAuthentication(tagReader : tagReader)
+            if passwordType == .mrz {
+                try await doBACAuthentication(tagReader : tagReader)
+            } else {
+                Logger.passportReader.error( "BAC fallback not attempted: unsupported for passwordType \(String(describing: self.passwordType))" )
+                throw NFCPassportReaderError.InvalidCAN
+            }
         }
         
         // Now to read the datagroups

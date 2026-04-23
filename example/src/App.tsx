@@ -15,22 +15,32 @@ import EIdReader, {
 } from '@2060.io/react-native-eid-reader';
 import { pngExample } from './data';
 
+enum AuthMethod {
+  MRZ = 'MRZ',
+  CAN = 'CAN',
+}
+
 enum InputStep {
   DocumentNumber = 'DocumentNumber',
   BirthDate = 'BirthDate',
   ExpirationDate = 'ExpirationDate',
+  Can = 'Can',
 }
 
 export default function App() {
   const [result, setResult] = React.useState<EIdReadResult>();
   const [convertedImage, setConvertedImage] = React.useState(pngExample);
   const [modalVisible, setModalVisible] = React.useState(false);
+  const [authMethod, setAuthMethod] = React.useState<AuthMethod>(
+    AuthMethod.MRZ
+  );
   const [inputStep, setInputStep] = React.useState<InputStep>(
     InputStep.DocumentNumber
   );
-  const [documentNumber, setDocumentNumber] = React.useState('33016244');
-  const [birthDate, setBirthDate] = React.useState('870624');
-  const [expirationDate, setExpirationDate] = React.useState('330501');
+  const [documentNumber, setDocumentNumber] = React.useState('');
+  const [birthDate, setBirthDate] = React.useState('');
+  const [expirationDate, setExpirationDate] = React.useState('');
+  const [can, setCan] = React.useState('');
 
   React.useEffect(() => {
     EIdReader.addOnTagDiscoveredListener(() => {
@@ -47,7 +57,20 @@ export default function App() {
     };
   }, []);
 
+  const openInputModal = () => {
+    setInputStep(
+      authMethod === AuthMethod.CAN ? InputStep.Can : InputStep.DocumentNumber
+    );
+    setModalVisible(true);
+  };
+
   const handleOkPress = () => {
+    if (inputStep === InputStep.Can) {
+      console.log('Entered CAN:', can);
+      setModalVisible(false);
+      startReading();
+      return;
+    }
     if (inputStep === InputStep.DocumentNumber) {
       console.log('Entered documentNumber:', documentNumber);
       setInputStep(InputStep.BirthDate);
@@ -64,15 +87,16 @@ export default function App() {
   };
 
   const startReading = () => {
-    EIdReader.startReading({
-      mrzInfo: {
-        documentNumber,
-        expirationDate,
-        birthDate,
-      },
-      includeRawData: true,
-      includeImages: true,
-    })
+    const params =
+      authMethod === AuthMethod.CAN
+        ? { can, includeRawData: true, includeImages: true }
+        : {
+            mrzInfo: { documentNumber, expirationDate, birthDate },
+            includeRawData: true,
+            includeImages: true,
+          };
+
+    EIdReader.startReading(params)
       .then((res) => {
         console.log(`status: ${res.status}`);
         console.log(`result: ${JSON.stringify(res)}`);
@@ -124,22 +148,25 @@ export default function App() {
     }
   };
 
-  const texts = {
+  const texts: Record<InputStep, string> = {
     [InputStep.DocumentNumber]: 'Document number',
     [InputStep.BirthDate]: 'Birth date (YYMMDD)',
     [InputStep.ExpirationDate]: 'Expiration date (YYMMDD)',
+    [InputStep.Can]: 'CAN (6 digits)',
   };
 
-  const callbacks = {
+  const callbacks: Record<InputStep, (v: string) => void> = {
     [InputStep.DocumentNumber]: setDocumentNumber,
     [InputStep.BirthDate]: setBirthDate,
     [InputStep.ExpirationDate]: setExpirationDate,
+    [InputStep.Can]: setCan,
   };
 
-  const defaultInput = {
+  const defaultInput: Record<InputStep, string> = {
     [InputStep.DocumentNumber]: documentNumber,
     [InputStep.BirthDate]: birthDate,
     [InputStep.ExpirationDate]: expirationDate,
+    [InputStep.Can]: can,
   };
 
   return (
@@ -180,10 +207,29 @@ export default function App() {
       <ScrollView style={styles.container}>
         <View style={styles.box}>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              onPress={() => setModalVisible(true)}
-              style={styles.button}
-            >
+            {(Object.values(AuthMethod) as AuthMethod[]).map((m) => (
+              <TouchableOpacity
+                key={m}
+                onPress={() => setAuthMethod(m)}
+                style={[
+                  styles.button,
+                  authMethod === m && styles.buttonSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.buttonText,
+                    authMethod === m && styles.buttonTextSelected,
+                  ]}
+                >
+                  {m}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity onPress={openInputModal} style={styles.button}>
               <Text style={styles.buttonText}>Start Reading</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={stopReading} style={styles.button}>
@@ -234,6 +280,12 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#252526',
     textAlign: 'center',
+  },
+  buttonSelected: {
+    backgroundColor: '#007bff',
+  },
+  buttonTextSelected: {
+    color: '#fff',
   },
   text: {
     color: '#fff',

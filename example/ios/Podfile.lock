@@ -2045,7 +2045,7 @@ SPEC CHECKSUMS:
   React-logger: 2c87840a9f6322a1226d0df337d9662f44ea6094
   React-Mapbuffer: 1fc10d873f00aa895836c316a9737ce7d43875ce
   React-microtasksnativemodule: 85ac7286ff84e8fc8e1956233748b8d4b2a6dcea
-  react-native-eid-reader: 374ce2edff73a4508ee472b1a46f173acced0ec5
+  react-native-eid-reader: f4cfd6e818aa0be5bda8eca0111d6963ae7db48b
   React-NativeModulesApple: 993744f42aab769eb02bf5d256b6767c546d0bb5
   React-networking: 251bfddc651caca5e3039d1afa1d2eca890d0c56
   React-oscompat: ed8fa636665935e962d4091180ba6f07dcad7ea9
@@ -2082,6 +2082,6 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: f002aa117af975d212bc8f33f0f0187df2289ed7
   Yoga: 04bb4bfeb02c0000b940c1e6e89e856cd8de5a71
 
-PODFILE CHECKSUM: efcbf267d270090130456eb666602236c918711d
+PODFILE CHECKSUM: d74f995510aae409f7c3421367341a2e159bb2aa
 
 COCOAPODS: 1.16.2

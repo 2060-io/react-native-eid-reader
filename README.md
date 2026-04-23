@@ -6,16 +6,19 @@
 
 A React Native module to read electronic passports and ID cards over NFC, following the **ICAO Doc 9303** standard for Machine Readable Travel Documents (MRTDs).
 
-Given the MRZ (Machine Readable Zone) information of a document — document number, date of birth and expiration date — the library authenticates against the chip using BAC (Basic Access Control), reads the relevant data groups, and returns personal data and (optionally) the portrait image stored inside the document.
+Given the MRZ (Machine Readable Zone) information of a document — document number, date of birth and expiration date — or the Card Access Number (CAN) printed on the card, the library authenticates against the chip (PACE or BAC), reads the relevant data groups, and returns personal data and (optionally) the portrait image stored inside the document.
 
 This module is used in production by [Hologram Messaging](https://hologram.zone) as part of its real-world identity verification flows.
 
 ## Features
 
-- 📖 Reads **ICAO 9303** compliant electronic passports and national eID cards
-- 🔐 BAC authentication from the MRZ key (document number + DOB + expiry)
+- 📖 Reads **ICAO 9303** compliant electronic passports and national eID cards (TD1, TD2, TD3)
+- 🔐 **PACE** (Password Authenticated Connection Establishment) with automatic fallback to **BAC** (Basic Access Control)
+  - PACE-MRZ — derived from document number + DOB + expiry
+  - PACE-CAN — 6-digit Card Access Number (required by some eIDs, e.g. the German Personalausweis)
+- 🆔 Supports TD1 ID cards with extended (>9-char) document numbers (e.g. Moroccan CNIe)
 - 👤 Returns parsed personal data from DG1 (MRZ) and portrait image from DG2
-- 🗂️ Optional access to raw data groups (base64) for advanced use cases (PA, signature verification, ...)
+- 🗂️ Optional access to raw data groups (base64) for advanced use cases (PA, signature verification, …)
 - 🖼️ Helper to convert the embedded JPEG2000 portrait to JPEG so it can be displayed in a standard `<Image />`
 - 📡 NFC state & tag-discovered event listeners
 - ⚙️ NFC capability checks and deep-link into system NFC settings (Android)
@@ -27,7 +30,7 @@ This module is used in production by [Hologram Messaging](https://hologram.zone)
 | Platform | Minimum version | Notes                                                                                |
 | -------- | --------------- | ------------------------------------------------------------------------------------ |
 | Android  | API 21 (5.0)    | Device must have NFC hardware                                                        |
-| iOS      | 15.0            | Physical device required; Simulator has no NFC. Requires the NFC capability & entitlement |
+| iOS      | 16.0            | Physical device required; Simulator has no NFC. Requires the NFC capability & entitlement. iOS 16 is needed for the `.pace` polling option used to reliably detect post-2021 eIDs (e.g. French CNIe). |
 
 ## Installation
 
@@ -87,15 +90,25 @@ async function scan() {
   EIdReader.addOnTagDiscoveredListener(() => console.log('Tag discovered'));
 
   try {
+    // Option A — MRZ-based authentication (BAC / PACE-MRZ)
     const result: EIdReadResult = await EIdReader.startReading({
       mrzInfo: {
-        documentNumber: '33016244',
-        birthDate: '870624',       // YYMMDD
-        expirationDate: '330501',  // YYMMDD
+        documentNumber: 'L726DHAM0',  // 9-char alphanumeric, or the full extended
+                                      // document number for TD1 cards that have one
+        birthDate: '751213',          // YYMMDD
+        expirationDate: '341112',     // YYMMDD
       },
       includeImages: true,
       includeRawData: false,
     });
+
+    // Option B — CAN-based authentication (PACE-CAN)
+    //   Used by eIDs that do not accept BAC/PACE-MRZ. The CAN is a 6-digit
+    //   code printed on the card (e.g. the German Personalausweis).
+    // const result: EIdReadResult = await EIdReader.startReading({
+    //   can: '123456',
+    //   includeImages: true,
+    // });
 
     if (result.status === 'OK') {
       console.log(result.data.firstName, result.data.lastName);
@@ -125,14 +138,26 @@ See the [example app](./example) for a fuller, runnable integration (including i
 
 Starts an NFC reading session. On iOS this presents the system NFC sheet; on Android the user must hold the document against the back of the phone.
 
-| Param            | Type                                  | Default | Description                                     |
-| ---------------- | ------------------------------------- | ------- | ----------------------------------------------- |
-| `mrzInfo`        | `{ documentNumber, birthDate, expirationDate }` | —       | MRZ key used for BAC. Dates in `YYMMDD` format. |
-| `includeImages`  | `boolean`                             | `false` | Include the portrait photo from DG2             |
-| `includeRawData` | `boolean`                             | `false` | Include raw data groups as base64               |
-| `labels`         | `object`                              | —       | Strings shown in the iOS NFC sheet & errors     |
+Exactly one of `mrzInfo` or `can` must be supplied.
+
+| Param            | Type                                            | Default | Description                                                                                                  |
+| ---------------- | ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `mrzInfo`        | `{ documentNumber, birthDate, expirationDate }` | —       | MRZ-derived key for BAC / PACE-MRZ. Dates in `YYMMDD` format. `documentNumber` may be longer than 9 chars for TD1 cards with an extended document number. |
+| `can`            | `string` (6 digits)                             | —       | Card Access Number for PACE-CAN. iOS only for now.                                                           |
+| `includeImages`  | `boolean`                                       | `false` | Include the portrait photo from DG2                                                                          |
+| `includeRawData` | `boolean`                                       | `false` | Include raw data groups as base64                                                                            |
+| `labels`         | `object`                                        | —       | Strings shown in the iOS NFC sheet & errors                                                                  |
 
 Returns an `EIdReadResult` whose `status` is `'OK' | 'Error' | 'Canceled'`.
+
+### Authentication protocol used
+
+The library picks the strongest access protocol the card advertises:
+
+1. **PACE** (preferred) — negotiated automatically when the card publishes `PACEInfo` in `EF.CardAccess`.
+   - `PACE-MRZ` when `mrzInfo` is supplied.
+   - `PACE-CAN` when `can` is supplied (iOS only for now).
+2. **BAC** — automatic fallback when PACE is not supported or fails, using the MRZ key. Only meaningful with `mrzInfo`; eIDs that refuse BAC (e.g. French CNIe) will simply report the PACE failure.
 
 ### `stopReading(): void`
 
@@ -172,7 +197,9 @@ yarn example ios           # (after `cd example/ios && pod install`)
 ## Standards & references
 
 - [ICAO Doc 9303 — Machine Readable Travel Documents](https://www.icao.int/publications/pages/publication.aspx?docnum=9303)
-- BAC (Basic Access Control) — derives chip access keys from the MRZ
+- [BSI TR-03110 — Advanced Security Mechanisms for Machine Readable Travel Documents](https://www.bsi.bund.de/) (PACE / EAC)
+- PACE (Password Authenticated Connection Establishment) — secure session establishment from an MRZ key or CAN
+- BAC (Basic Access Control) — legacy access protocol derived from the MRZ
 - DG1 (MRZ) and DG2 (portrait) are the data groups parsed by default
 
 ## Acknowledgements & project history

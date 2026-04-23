@@ -31,7 +31,17 @@ export type StartReadingLabels = {
 };
 
 export type StartReadingParams = {
-  mrzInfo: StartReadingMrzInfo;
+  /**
+   * MRZ-derived authentication inputs (document number, date of birth, and
+   * date of expiry). Used for BAC and PACE-MRZ. Supply either this or `can`.
+   */
+  mrzInfo?: StartReadingMrzInfo;
+  /**
+   * Card Access Number (CAN) for PACE-CAN authentication. Used by some eIDs
+   * (e.g. the French CNIe) which do not accept BAC or PACE-MRZ. Must be 6
+   * digits. Supply either this or `mrzInfo`.
+   */
+  can?: string;
   includeImages?: boolean;
   includeRawData?: boolean;
   labels?: StartReadingLabels;

@@ -9,7 +9,7 @@ import java.io.ByteArrayInputStream
 import net.sf.scuba.smartcards.CardService
 import org.jmrtd.BACKeySpec
 import org.jmrtd.PassportService
-import org.jmrtd.lds.CardSecurityFile
+import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
 import org.jmrtd.lds.icao.DG11File
 import org.jmrtd.lds.icao.DG1File
@@ -36,11 +36,19 @@ class EIdReader(context: Context) {
     )
     service.open()
 
+    // ICAO 9303-11 §9.2:
+    //   EF.CardAccess  (FID 011C) — readable WITHOUT auth. Contains PACEInfo,
+    //                                used to bootstrap PACE.
+    //   EF.CardSecurity (FID 011D) — readable ONLY AFTER PACE. Used by
+    //                                Chip / Terminal Authentication.
+    // Earlier revisions of this code read EF.CardSecurity here and got 6A82
+    // on modern eIDs (French CNIe etc.) that enforce the distinction, which
+    // silently skipped PACE and then failed at SELECT AID with 6982.
     var paceSucceeded = false
     try {
-      val cardSecurityFile =
-        CardSecurityFile(service.getInputStream(PassportService.EF_CARD_SECURITY))
-      val securityInfoCollection = cardSecurityFile.securityInfos
+      val cardAccessFile =
+        CardAccessFile(service.getInputStream(PassportService.EF_CARD_ACCESS))
+      val securityInfoCollection = cardAccessFile.securityInfos
 
       for (securityInfo in securityInfoCollection) {
         if (securityInfo is PACEInfo) {
@@ -51,6 +59,7 @@ class EIdReader(context: Context) {
             null
           )
           paceSucceeded = true
+          break
         }
       }
     } catch (e: Exception) {
@@ -63,12 +72,13 @@ class EIdReader(context: Context) {
     val dataGroupData: MutableMap<String, String> = mutableMapOf()
 
     if (!paceSucceeded) {
+      // Card either has no EF.CardAccess (BAC-only passport) or PACE failed.
+      // Fall back to BAC.
       try {
-        service.getInputStream(PassportService.EF_COM).read()
+        service.doBAC(bacKey)
       } catch (e: Exception) {
         e.printStackTrace()
-
-        service.doBAC(bacKey)
+        throw e
       }
     }
 

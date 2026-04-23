@@ -35,6 +35,12 @@ extension PACEHandlerError: LocalizedError {
     }
 }
 
+public enum PACEPasswordType {
+    case mrz
+    case can
+    // Other types could be added: PIN, PUK, etc.
+}
+
 @available(iOS 15, *)
 public class PACEHandler {
     
@@ -72,7 +78,7 @@ public class PACEHandler {
         isPACESupported = true
     }
     
-    public func doPACE( mrzKey : String ) async throws {
+    public func doPACE(password: String, passwordType: PACEPasswordType = .mrz) async throws {
         guard isPACESupported else {
             throw NFCPassportReaderError.NotYetSupported( "PACE not supported" )
         }
@@ -88,8 +94,16 @@ public class PACEHandler {
         digestAlg = try paceInfo.getDigestAlgorithm()  // Either SHA-1 or SHA-256.
         keyLength = try paceInfo.getKeyLength()  // Get key length  the enc cipher. Either 128, 192, or 256.
 
-        paceKeyType = PACEHandler.MRZ_PACE_KEY_REFERENCE
-        paceKey = try createPaceKey( from: mrzKey )
+        // Set key reference based on password type
+        switch passwordType {
+        case .mrz:
+            paceKeyType = PACEHandler.MRZ_PACE_KEY_REFERENCE
+        case .can:
+            paceKeyType = PACEHandler.CAN_PACE_KEY_REFERENCE
+        }
+
+        // Create PACE key with appropriate method based on type
+        paceKey = try createPaceKey(from: password, type: passwordType)
         
         // Temporary logging
         Logger.pace.debug("doPace - inpit parameters" )
@@ -100,15 +114,20 @@ public class PACEHandler {
         Logger.pace.debug("cipherAlg - \(self.cipherAlg)" )
         Logger.pace.debug("digestAlg - \(self.digestAlg)" )
         Logger.pace.debug("keyLength - \(self.keyLength)" )
-        Logger.pace.debug("keyLength - \(mrzKey)" )
+        Logger.pace.debug("password - \(password)" )
         Logger.pace.debug("paceKey - \(binToHexRep(self.paceKey, asArray:true))" )
 
         // First start the initial auth call
         _ = try await tagReader.sendMSESetATMutualAuth(oid: paceOID, keyType: paceKeyType)
             
         let decryptedNonce = try await self.doStep1()
+
         let ephemeralParams = try await self.doStep2(passportNonce: decryptedNonce)
+        defer { EVP_PKEY_free( ephemeralParams ) }
+
         let (ephemeralKeyPair, passportPublicKey) = try await self.doStep3KeyExchange(ephemeralParams: ephemeralParams)
+        defer { EVP_PKEY_free(ephemeralKeyPair); EVP_PKEY_free(passportPublicKey) }
+
         let (encKey, macKey) = try await self.doStep4KeyAgreement( pcdKeyPair: ephemeralKeyPair, passportPublicKey: passportPublicKey)
         try self.paceCompleted( ksEnc: encKey, ksMac: macKey )
         Logger.pace.debug("PACE SUCCESSFUL" )
@@ -248,21 +267,38 @@ public class PACEHandler {
     func doStep3KeyExchange(ephemeralParams: OpaquePointer) async throws -> (OpaquePointer, OpaquePointer) {
         Logger.pace.debug( "Doing PACE Step3 - Key Exchange")
 
-        // Generate ephemeral keypair from ephemeralParams
-        var ephKeyPair : OpaquePointer? = nil
-        let pctx = EVP_PKEY_CTX_new(ephemeralParams, nil)
-        EVP_PKEY_keygen_init(pctx)
-        EVP_PKEY_keygen(pctx, &ephKeyPair)
-        EVP_PKEY_CTX_free(pctx)
-                
+        // OpenSSL 3 fix (ported from AndyQ/NFCPassportReader commit eac8de9):
+        // the high-level EVP_PKEY_keygen path silently drops the custom curve
+        // parameters set by the PACE GM mapping step, producing an ephemeral
+        // key on the wrong (standard) curve — which fails silently until the
+        // final authentication token MAC check (SW=63 00). Instead, create the
+        // EC_KEY directly, copy the mapped group, generate the key, and wrap
+        // it in an EVP_PKEY.
+        guard let ephEcKey = EC_KEY_new() else {
+            throw NFCPassportReaderError.PACEError( "Step3 KeyEx", "Failed to create EC key" )
+        }
+        defer { EC_KEY_free(ephEcKey) }
+
+        guard
+            let ecParams = EVP_PKEY_get0_EC_KEY(ephemeralParams),
+            let group = EC_KEY_get0_group(ecParams),
+            EC_KEY_set_group(ephEcKey, group) == 1,
+            EC_KEY_generate_key(ephEcKey) == 1 else {
+            throw NFCPassportReaderError.PACEError( "Step3 KeyEx", "Failed to generate EC key" )
+        }
+
+        // Wrap the EC_KEY into an EVP_PKEY
+        let ephKeyPair = EVP_PKEY_new()
         guard let ephemeralKeyPair = ephKeyPair else {
             throw NFCPassportReaderError.PACEError( "Step3 KeyEx", "Unable to get create ephermeral key pair" )
         }
-        
-        Logger.pace.debug( "Generated Ephemeral key pair")
 
-        // We've finished with the ephemeralParams now - we can now free it
-        EVP_PKEY_free( ephemeralParams )
+        guard EVP_PKEY_set1_EC_KEY(ephemeralKeyPair, ephEcKey) == 1 else {
+            EVP_PKEY_free(ephemeralKeyPair)
+            throw NFCPassportReaderError.PACEError( "Step3 KeyEx", "Failed to set ephemeral key pair private key" )
+        }
+
+        Logger.pace.debug( "Generated Ephemeral key pair")
 
         guard let publicKey = OpenSSLUtils.getPublicKeyData( from: ephemeralKeyPair ) else {
             throw NFCPassportReaderError.PACEError( "Step3 KeyEx", "Unable to get public key from ephermeral key pair" )
@@ -579,16 +615,28 @@ extension PACEHandler {
         return [UInt8](data)
     }
 
-    /// Computes a key seed based on an MRZ key
-    /// - Parameter the mrz key
-    /// - Returns a encoded key based on the mrz key that can be used for PACE
-    func createPaceKey( from mrzKey: String ) throws -> [UInt8] {
-        let buf: [UInt8] = Array(mrzKey.utf8)
-        let hash = calcSHA1Hash(buf)
-        
-        let smskg = SecureMessagingSessionKeyGenerator()
-        let key = try smskg.deriveKey(keySeed: hash, cipherAlgName: cipherAlg, keyLength: keyLength, nonce: nil, mode: .PACE_MODE, paceKeyReference: paceKeyType)
-        return key
+    /// Computes a key seed based on an MRZ key or CAN.
+    /// - Parameters:
+    ///     - password: The password to be used for PACE
+    ///     - type: The type of the password (MRZ, CAN, etc)
+    /// - Returns a encoded key based on the password that can be used for PACE
+    func createPaceKey(from password: String, type: PACEPasswordType) throws -> [UInt8] {
+        switch type {
+        case .mrz:
+            let buf: [UInt8] = Array(password.utf8)
+            let hash = calcSHA1Hash(buf)
+
+            let smskg = SecureMessagingSessionKeyGenerator()
+            let key = try smskg.deriveKey(keySeed: hash, cipherAlgName: cipherAlg, keyLength: keyLength, nonce: nil, mode: .PACE_MODE, paceKeyReference: paceKeyType)
+            return key
+
+        case .can:
+            let canBytes: [UInt8] = Array(password.utf8)
+
+            let smskg = SecureMessagingSessionKeyGenerator()
+            let key = try smskg.deriveKey(keySeed: canBytes, cipherAlgName: cipherAlg, keyLength: keyLength, nonce: nil, mode: .PACE_MODE, paceKeyReference: paceKeyType)
+            return key
+        }
     }
     
     /// Performs the ECDH PACE GM key agreement protocol by multiplying a private key with a public key
