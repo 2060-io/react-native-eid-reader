@@ -14,6 +14,12 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/2060-io/react-native-eid-reader.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
+  # Keep the TurboModule header out of the pod's umbrella. It imports
+  # `<RNEIdReaderSpec/RNEIdReaderSpec.h>` which transitively pulls in C++
+  # headers (e.g. <utility>, std::optional); if it ends up in the umbrella,
+  # other pods compiling plain Obj-C files that parse this module will fail
+  # with "This file must be compiled as Obj-C++" / "'utility' file not found".
+  s.private_header_files = "ios/EidReader.h"
 
   s.dependency "OpenSSL-Universal", '3.2.2000'
 
