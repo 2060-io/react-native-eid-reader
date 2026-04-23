@@ -2,8 +2,8 @@ import Foundation
 import React
 import CoreNFC
 
-@objc(EIdReader)
-class EIdReader: RCTEventEmitter {
+@objc(EIdReaderImpl)
+class EIdReaderImpl: NSObject {
   var isReading : Bool = false
   private let passportReader = PassportReader()
 

@@ -1,21 +1,6 @@
-import { NativeModules, DeviceEventEmitter, Platform } from 'react-native';
+import { DeviceEventEmitter } from 'react-native';
 
-const LINKING_ERROR =
-  `The package '@2060.io/react-native-eid-reader' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
-
-const EIdReaderNativeModule = NativeModules.EIdReader
-  ? NativeModules.EIdReader
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
+import EIdReaderNativeModule from './NativeEIdReader';
 
 enum EIdReaderEvent {
   TAG_DISCOVERED = 'onTagDiscovered',
@@ -66,8 +51,13 @@ export type EIdReadResult = {
 };
 
 export default class EIdReader {
-  static startReading(params: StartReadingParams): Promise<EIdReadResult> {
-    return EIdReaderNativeModule.startReading(params);
+  static async startReading(
+    params: StartReadingParams
+  ): Promise<EIdReadResult> {
+    // Codegen only supports `string` (not string-literal unions) as the
+    // TurboModule return type for `status`, so we narrow at the JS boundary.
+    const result = await EIdReaderNativeModule.startReading(params);
+    return result as EIdReadResult;
   }
 
   static stopReading() {
