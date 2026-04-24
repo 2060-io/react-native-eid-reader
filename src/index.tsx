@@ -7,28 +7,43 @@ enum EIdReaderEvent {
   NFC_STATE_CHANGED = 'onNfcStateChanged',
 }
 
-export type StartReadingParams = {
-  mrzInfo: {
-    expirationDate: string;
-    birthDate: string;
-    documentNumber: string;
-  };
+export type StartReadingLabels = {
+  title?: string;
+  cancelButton?: string;
+  requestPresentPassport?: string;
+  authenticatingWithPassport?: string;
+  reading?: string;
+  activeAuthentication?: string;
+  successfulRead?: string;
+  tagNotValid?: string;
+  moreThanOneTagFound?: string;
+  invalidMRZKey?: string;
+  error?: string;
+};
+
+export type StartReadingMrzInfo = {
+  expirationDate: string;
+  birthDate: string;
+  documentNumber: string;
+};
+
+type StartReadingParamsBase = {
   includeImages?: boolean; // default: false
   includeRawData?: boolean; // default: false
-  labels?: {
-    title?: string;
-    cancelButton?: string;
-    requestPresentPassport?: string;
-    authenticatingWithPassport?: string;
-    reading?: string;
-    activeAuthentication?: string;
-    successfulRead?: string;
-    tagNotValid?: string;
-    moreThanOneTagFound?: string;
-    invalidMRZKey?: string;
-    error?: string;
-  };
+  labels?: StartReadingLabels;
 };
+
+/**
+ * Parameters for `EIdReader.startReading`. Exactly one of `mrzInfo` or `can`
+ * must be supplied.
+ *
+ * - `mrzInfo` — drives BAC and PACE-MRZ.
+ * - `can`     — 6-digit Card Access Number for PACE-CAN (used by some eIDs
+ *               that do not accept BAC or PACE-MRZ).
+ */
+export type StartReadingParams =
+  | (StartReadingParamsBase & { mrzInfo: StartReadingMrzInfo; can?: never })
+  | (StartReadingParamsBase & { can: string; mrzInfo?: never });
 
 export type EidReadStatus = 'OK' | 'Error' | 'Canceled';
 

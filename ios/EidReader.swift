@@ -36,20 +36,34 @@ public class EIdReaderImpl: NSObject {
     isReading = true
     
     let labels = params["labels"] as? NSDictionary
-    let mrzInfo = params["mrzInfo"] as! NSDictionary
-    let expirationDate = mrzInfo["expirationDate"] as! String
-    let birthDate = mrzInfo["birthDate"] as! String
-    let documentNumber = mrzInfo["documentNumber"] as! String
-      
-    let mrzKey = PassportUtils().getMRZKey(passportNumber: documentNumber, dateOfBirth: birthDate, dateOfExpiry: expirationDate)
-    
+
+    // Caller may supply EITHER a CAN OR an `mrzInfo` used to derive the MRZ key for BAC / PACE-MRZ.
+    let can = params["can"] as? String
+    var mrzKey: String? = nil
+    if can == nil {
+      guard let mrzInfo = params["mrzInfo"] as? NSDictionary,
+            let expirationDate = mrzInfo["expirationDate"] as? String,
+            let birthDate      = mrzInfo["birthDate"] as? String,
+            let documentNumber = mrzInfo["documentNumber"] as? String else {
+        resolve(["status": "Error",
+                 "error": "Either `can` or `mrzInfo` (expirationDate, birthDate, documentNumber) must be provided"])
+        return
+      }
+      mrzKey = PassportUtils().getMRZKey(passportNumber: documentNumber, dateOfBirth: birthDate, dateOfExpiry: expirationDate)
+    }
+
     let includeImages = params["includeImages"] as? Bool
     let includeRawData = params["includeRawData"] as? Bool
 
     Task {
       var eidReadResult: [String: Any] = [:]
       do {
-        let passport = try await passportReader.readPassport( mrzKey: mrzKey, useExtendedMode: false, labels: labels)
+        let passport = try await passportReader.readPassport(
+          mrzKey: mrzKey,
+          can: can,
+          useExtendedMode: false,
+          labels: labels
+        )
 
         var data: [String: Any] = [:]
 

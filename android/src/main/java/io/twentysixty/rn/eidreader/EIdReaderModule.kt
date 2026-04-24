@@ -43,6 +43,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   private val nfcPassportReader = EIdReader(reactContext)
   private var adapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(reactContext)
   private var mrzInfo: MrzInfo? = null
+  private var can: String? = null
   private var includeImages = false
   private var includeRawData = false
   private var isReading = false
@@ -162,19 +163,23 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
               if (listOf(*tag!!.techList).contains("android.nfc.tech.IsoDep")) {
                   CoroutineScope(Dispatchers.IO).launch {
                       try {
-                          val bacKey: BACKeySpec = BACKey(
-                              mrzInfo!!.documentNo,
-                              mrzInfo!!.birthDate,
-                              mrzInfo!!.expiryDate
-                          )
-
                           reactApplicationContext.currentActivity?.runOnUiThread {
                               val message =
                                   labels?.getString("reading") ?: "Reading. Hold your document..."
                               _dialog?.setMessage(message)
                           }
 
-                          val result = nfcPassportReader.readPassport(IsoDep.get(tag), bacKey, includeImages, includeRawData)
+                          val isoDep = IsoDep.get(tag)
+                          val result = if (can != null) {
+                              nfcPassportReader.readPassportWithCAN(isoDep, can!!, includeImages, includeRawData)
+                          } else {
+                              val bacKey: BACKeySpec = BACKey(
+                                  mrzInfo!!.documentNo,
+                                  mrzInfo!!.birthDate,
+                                  mrzInfo!!.expiryDate
+                              )
+                              nfcPassportReader.readPassport(isoDep, bacKey, includeImages, includeRawData)
+                          }
 
                           val map = result.serializeToMap()
                           val reactMap = jsonToReactMap.convertJsonToMap(JSONObject(map))
@@ -213,16 +218,26 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
       try {
         _promise = promise
         labels = readableMap.getMap("labels")
-        val mrzMap = readableMap.getMap("mrzInfo")
-        val mrzExpirationDate = mrzMap?.getString("expirationDate")
-        val mrzBirthDate = mrzMap?.getString("birthDate")
-        val mrzDocumentNumber = mrzMap?.getString("documentNumber")
 
-        if (mrzExpirationDate.isNullOrEmpty() || mrzDocumentNumber.isNullOrEmpty() || mrzBirthDate.isNullOrEmpty()) {
-          reject(Exception("MRZ info is invalid"))
+        // Caller supplies either `can` (PACE-CAN) OR `mrzInfo` (PACE-MRZ / BAC).
+        val canParam = if (readableMap.hasKey("can")) readableMap.getString("can") else null
+        if (!canParam.isNullOrEmpty()) {
+          can = canParam
+          mrzInfo = null
+        } else {
+          can = null
+          val mrzMap = readableMap.getMap("mrzInfo")
+          val mrzExpirationDate = mrzMap?.getString("expirationDate")
+          val mrzBirthDate = mrzMap?.getString("birthDate")
+          val mrzDocumentNumber = mrzMap?.getString("documentNumber")
+
+          if (mrzExpirationDate.isNullOrEmpty() || mrzDocumentNumber.isNullOrEmpty() || mrzBirthDate.isNullOrEmpty()) {
+            reject(Exception("MRZ info is invalid"))
+            return@let
+          }
+
+          mrzInfo = MrzInfo(mrzBirthDate!!, mrzDocumentNumber!!, mrzExpirationDate!!)
         }
-
-        mrzInfo = MrzInfo(mrzBirthDate!!, mrzDocumentNumber!!, mrzExpirationDate!!)
 
         includeImages =
                 readableMap.hasKey("includeImages") && readableMap.getBoolean("includeImages")
@@ -272,6 +287,7 @@ class EIdReaderModule(reactContext: ReactApplicationContext) :
   private fun stopReading(removeDialog: Boolean) {
     isReading = false
     mrzInfo = null
+    can = null
     if (_dialog != null && removeDialog) {
       _dialog?.dismiss()
       _dialog = null

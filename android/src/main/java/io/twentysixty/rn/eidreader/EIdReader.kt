@@ -7,9 +7,11 @@ import io.twentysixty.rn.eidreader.utils.*
 import io.twentysixty.rn.eidreader.dto.*
 import java.io.ByteArrayInputStream
 import net.sf.scuba.smartcards.CardService
+import org.jmrtd.AccessKeySpec
 import org.jmrtd.BACKeySpec
+import org.jmrtd.PACEKeySpec
 import org.jmrtd.PassportService
-import org.jmrtd.lds.CardSecurityFile
+import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
 import org.jmrtd.lds.icao.DG11File
 import org.jmrtd.lds.icao.DG1File
@@ -21,7 +23,35 @@ class EIdReader(context: Context) {
   private val bitmapUtil = BitmapUtil(context)
   private val dateUtil = DateUtil()
 
+  /**
+   * Reads the document using the MRZ-derived key. The library will first try
+   * PACE-MRZ (if the card advertises PACEInfo in EF.CardAccess) and transparently
+   * fall back to BAC on PACE failure or on BAC-only passports.
+   */
   fun readPassport(isoDep: IsoDep, bacKey: BACKeySpec, includeImages: Boolean, includeRawData: Boolean): EIdReadResult {
+    return readPassportInternal(isoDep, bacKey, bacKey, includeImages, includeRawData)
+  }
+
+  /**
+   * Reads the document using the Card Access Number (PACE-CAN). BAC fallback
+   * is not possible from a CAN, so if PACE fails the session is aborted.
+   *
+   * NOTE: untested in-house — we currently have no eID that exposes CAN-only
+   * access. Reported to work in principle with any jmrtd-compatible card
+   * that publishes a PACE OID in EF.CardAccess.
+   */
+  fun readPassportWithCAN(isoDep: IsoDep, can: String, includeImages: Boolean, includeRawData: Boolean): EIdReadResult {
+    val paceKey = PACEKeySpec.createCANKey(can)
+    return readPassportInternal(isoDep, paceKey, null, includeImages, includeRawData)
+  }
+
+  private fun readPassportInternal(
+    isoDep: IsoDep,
+    accessKey: AccessKeySpec,
+    bacFallbackKey: BACKeySpec?,
+    includeImages: Boolean,
+    includeRawData: Boolean,
+  ): EIdReadResult {
     isoDep.timeout = 5000
 
     val cardService = CardService.getInstance(isoDep)
@@ -36,21 +66,33 @@ class EIdReader(context: Context) {
     )
     service.open()
 
+    // ICAO 9303-11 §9.2:
+    //   EF.CardAccess  (FID 011C) — readable WITHOUT auth. Contains PACEInfo,
+    //                                used to bootstrap PACE.
+    //   EF.CardSecurity (FID 011D) — readable ONLY AFTER PACE. Used by
+    //                                Chip / Terminal Authentication.
+    // Earlier revisions of this code read EF.CardSecurity here and got 6A82
+    // on modern eIDs (French CNIe etc.) that enforce the distinction, which
+    // silently skipped PACE and then failed at SELECT AID with 6982.
     var paceSucceeded = false
     try {
-      val cardSecurityFile =
-        CardSecurityFile(service.getInputStream(PassportService.EF_CARD_SECURITY))
-      val securityInfoCollection = cardSecurityFile.securityInfos
+      val cardAccessFile =
+        CardAccessFile(service.getInputStream(PassportService.EF_CARD_ACCESS))
+      val securityInfoCollection = cardAccessFile.securityInfos
 
       for (securityInfo in securityInfoCollection) {
         if (securityInfo is PACEInfo) {
+          // jmrtd dispatches on the AccessKeySpec subtype:
+          //   BACKey       → PACE-MRZ
+          //   PACEKeySpec  → PACE-CAN / PIN / PUK (based on keyReference)
           service.doPACE(
-            bacKey,
+            accessKey,
             securityInfo.objectIdentifier,
             PACEInfo.toParameterSpec(securityInfo.parameterId),
             null
           )
           paceSucceeded = true
+          break
         }
       }
     } catch (e: Exception) {
@@ -63,12 +105,17 @@ class EIdReader(context: Context) {
     val dataGroupData: MutableMap<String, String> = mutableMapOf()
 
     if (!paceSucceeded) {
+      // Card either has no EF.CardAccess (BAC-only passport) or PACE failed.
+      // BAC fallback only makes sense when we were given an MRZ-derived key;
+      // you cannot derive BAC keys from a CAN.
+      if (bacFallbackKey == null) {
+        throw IllegalStateException("PACE failed and no BAC fallback is possible with a CAN-based access key")
+      }
       try {
-        service.getInputStream(PassportService.EF_COM).read()
+        service.doBAC(bacFallbackKey)
       } catch (e: Exception) {
         e.printStackTrace()
-
-        service.doBAC(bacKey)
+        throw e
       }
     }
 

@@ -14,24 +14,38 @@ var lastPassportScanTime : Date = Date().addingTimeInterval(-3600)
 class PassportUtils {
     
     func getMRZKey(passportNumber: String, dateOfBirth: String, dateOfExpiry: String ) -> String {
-        
-        // Pad fields if necessary
-        let pptNr = pad( passportNumber, fieldLength:9)
-        let dob = pad( dateOfBirth, fieldLength:6)
-        let exp = pad( dateOfExpiry, fieldLength:6)
-        
-        // Calculate checksums
+
+        // Pad fields if necessary. The document number field is 9 chars for
+        // TD2/TD3 passports, but TD1 ID cards encode longer (e.g. 12-char)
+        // document numbers in an "extended" form. For MRZ-derived key
+        // computation (BAC / PACE-MRZ) we must use the full document number
+        // as-is, without truncation. ICAO 9303 Part 11 §9.7.1.1.
+        let pptNr = padOrKeep( passportNumber, fieldLength: 9)
+        let dob = padOrKeep( dateOfBirth, fieldLength: 6)
+        let exp = padOrKeep( dateOfExpiry, fieldLength: 6)
+
+        // Calculate checksums (over the full, possibly extended, values)
         let passportNrChksum = calcCheckSum(pptNr)
         let dateOfBirthChksum = calcCheckSum(dob)
         let expiryDateChksum = calcCheckSum(exp)
 
         let mrzKey = "\(pptNr)\(passportNrChksum)\(dob)\(dateOfBirthChksum)\(exp)\(expiryDateChksum)"
-        
+
         return mrzKey
     }
-    
-    func pad( _ value : String, fieldLength:Int ) -> String {
-        // Pad out field lengths with < if they are too short
+
+    /// Right-pads `value` with `<` up to `fieldLength`. If `value` is already
+    /// longer than `fieldLength` (e.g. a TD1 extended document number), it is
+    /// returned as-is rather than truncated, so that the check-digit input
+    /// matches the card's expectation.
+    func padOrKeep( _ value : String, fieldLength: Int ) -> String {
+        if value.count >= fieldLength { return value }
+        return value + String(repeating: "<", count: fieldLength - value.count)
+    }
+
+    func pad( _ value : String, fieldLength: Int ) -> String {
+        // Legacy helper, retained for any external callers. Pads with `<` and
+        // truncates to fieldLength.
         let paddedValue = (value + String(repeating: "<", count: fieldLength)).prefix(fieldLength)
         return String(paddedValue)
     }
